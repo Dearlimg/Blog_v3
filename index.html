@@ -7,7 +7,6 @@
   <title>Durlim | Personal Website</title>
   <link rel="stylesheet" href="/view/css/styles.css">
   <link rel="stylesheet" href="/view/css/message-board.css">
-  <link rel="stylesheet" href="/view/css/comments.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
@@ -20,23 +19,10 @@
       <li><a href="https://github.com/Dearlimg" class="nav-item"><i class="fas fa-star"></i> Favorites</a></li>
       <li><a href="https://github.com/Dearlimg" class="nav-item">Backend</a></li>
       <li><a href="https://github.com/Dearlimg" class="nav-item">Code</a></li>
-      <li><a href="#" class="nav-item">AI</a></li>
       <li><a href="#projects" class="nav-item">Projects</a></li>
-      <li><a href="#comments" class="nav-item">Comments</a></li>
-      <li><a href="#message-board" class="nav-item">Message Board</a></li>
-      <li><a href="/view/html/wallet.html" class="nav-item" id="walletLink" style="display: none;">Wallet</a></li>
-      <li><a href="/view/html/shop.html" class="nav-item" id="shopLink" style="display: none;">Shop</a></li>
     </ul>
   </nav>
   <div class="social-links">
-    <div id="userAuthLinks" style="display: none;">
-      <span id="userName" style="margin-right: 1rem; color: var(--primary-color);"></span>
-      <a href="#" id="logoutBtn" class="social-icon" title="Logout"><i class="fas fa-sign-out-alt"></i></a>
-    </div>
-    <div id="guestAuthLinks">
-      <a href="/view/html/login.html" class="social-icon" title="Login"><i class="fas fa-sign-in-alt"></i></a>
-      <a href="/view/html/register.html" class="social-icon" title="Register"><i class="fas fa-user-plus"></i></a>
-    </div>
     <a href="https://github.com/Dearlimg" class="social-icon"><i class="fab fa-github"></i></a>
     <a href="https://github.com/Dearlimg" class="social-icon"><i class="fab fa-twitter"></i></a>
     <a href="https://github.com/Dearlimg" class="social-icon"><i class="fas fa-envelope"></i></a>
@@ -151,40 +137,6 @@
     </div>
   </section>
 
-  <section class="contact">
-    <h2>Contact</h2>
-    <p>Email: <a href="mailto:1492568061@qq.com">1492568061@qq.com</a></p>
-  </section>
-  <section id="comments" class="comments-container">
-    <h2>Comments</h2>
-    <div id="commentsNotification"></div>
-    
-    <div id="commentFormContainer" style="display: none;">
-      <div class="comment-form-container">
-        <form id="commentForm" class="comment-form">
-          <div class="form-group">
-            <label for="commentContent">Leave a Comment</label>
-            <textarea id="commentContent" name="content" required placeholder="Write your comment here..." rows="4"></textarea>
-          </div>
-          <button type="submit" class="submit-btn">
-            <i class="fas fa-comment"></i> Post Comment
-          </button>
-        </form>
-      </div>
-    </div>
-    
-    <div id="commentLoginPrompt" class="comment-login-prompt">
-      <p>Please <a href="/view/html/login.html">login</a> or <a href="/view/html/register.html">register</a> to leave a comment.</p>
-    </div>
-
-    <div class="comments-list-container">
-      <h3>All Comments</h3>
-      <div id="commentsList" class="comments-list">
-        <div class="message-loading">Loading comments...</div>
-      </div>
-    </div>
-  </section>
-
     <h2>If you want say something to me, you can write below...QAQ</h2>
   <section id="message-board" class="message-board-container">
     <h2>Message Board</h2>
@@ -225,8 +177,6 @@
 
 <script src="/view/JS/api-config.js"></script>
 <script src="/view/JS/script.js"></script>
-<script src="/view/JS/auth.js"></script>
-<script src="/view/JS/comments.js"></script>
 <script src="/view/JS/message-board.js"></script>
 </body>
 </html>
