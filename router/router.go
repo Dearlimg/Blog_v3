@@ -6,20 +6,27 @@ import (
 	"blog-front/internal/message"
 	"blog-front/internal/order"
 	"blog-front/internal/product"
+	"blog-front/internal/stat"
 	"blog-front/internal/user"
 	"blog-front/internal/wallet"
 	"blog-front/pkg/middleware"
 
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
 
-func Setup(cfg *config.Config, db *gorm.DB) *gin.Engine {
+func Setup(cfg *config.Config, db *gorm.DB, rdb *redis.Client) *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
+
+	statRepo := stat.NewRepository(db, rdb)
+	statSvc := stat.NewService(statRepo)
+	statH := stat.NewHandler(statSvc)
 
 	r := gin.New()
 	r.Use(gin.Recovery())
 	r.Use(middleware.Logger())
+	r.Use(stat.Middleware(statSvc))
 
 	r.Static("/static", "./static")
 	r.Static("/view", "./view")
@@ -44,6 +51,8 @@ func Setup(cfg *config.Config, db *gorm.DB) *gin.Engine {
 
 	api := r.Group("/api/v1")
 	{
+		api.GET("/stats", statH.Stats)
+
 		users := api.Group("/users")
 		{
 			users.POST("/register", userH.Register)

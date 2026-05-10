@@ -29,7 +29,7 @@ func (h *Handler) Create(c *gin.Context) {
 		return
 	}
 
-	e, err := h.svc.Create(&req)
+	e, err := h.svc.Create(&req, c.ClientIP())
 	if err != nil {
 		slog.Error("create message failed", "error", err)
 		response.InternalError(c, "failed to create message")

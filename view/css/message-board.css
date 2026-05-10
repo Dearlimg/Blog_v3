@@ -134,10 +134,20 @@
     word-break: break-word;
 }
 
-.message-email {
+.message-meta {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
     color: var(--light-text);
-    font-size: 0.9rem;
+    font-size: 0.8rem;
+}
+
+.meta-email {
     font-style: italic;
+}
+
+.meta-ip {
+    opacity: 0.7;
 }
 
 .message-loading {

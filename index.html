@@ -143,8 +143,8 @@
     <div class="message-form-container">
       <form id="messageForm" class="message-form">
         <div class="form-group">
-          <label for="name">Name</label>
-          <input type="text" id="name" name="name" required placeholder="Your name">
+          <label for="name">Name (optional — cute name auto‑generated)</label>
+          <input type="text" id="name" name="name" placeholder="Leave blank for a cute random name">
         </div>
         <div class="form-group">
           <label for="email">Email (optional)</label>
@@ -172,11 +172,26 @@
 </main>
 
 <footer>
+  <div class="stats-bar">
+    <span class="stat-item"><i class="fas fa-eye"></i> <span id="todayPV">-</span></span>
+    <span class="stat-item"><i class="fas fa-user"></i> <span id="todayUV">-</span></span>
+    <span class="stat-divider">|</span>
+    <span class="stat-item">Total PV <strong id="totalPV">-</strong></span>
+    <span class="stat-item">Total UV <strong id="totalUV">-</strong></span>
+    <span class="stat-item toggle-history" id="toggleHistory" title="View history"><i class="fas fa-chart-bar"></i></span>
+  </div>
+  <div class="history-table" id="historyTable" style="display: none;">
+    <table>
+      <thead><tr><th>Date</th><th>PV</th><th>UV</th></tr></thead>
+      <tbody id="historyBody"></tbody>
+    </table>
+  </div>
   <p>&copy; 2024 durlim. All rights reserved.</p>
 </footer>
 
 <script src="/view/JS/api-config.js"></script>
 <script src="/view/JS/script.js"></script>
 <script src="/view/JS/message-board.js"></script>
+<script src="/view/JS/stat.js"></script>
 </body>
 </html>

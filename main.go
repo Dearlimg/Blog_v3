@@ -12,6 +12,7 @@ import (
 	"blog-front/internal/message"
 	"blog-front/internal/order"
 	"blog-front/internal/product"
+	"blog-front/internal/stat"
 	"blog-front/internal/user"
 	"blog-front/internal/wallet"
 	"blog-front/pkg/database"
@@ -37,6 +38,11 @@ func main() {
 		os.Exit(1)
 	}
 
+	rdb, err := database.NewRedis(&cfg.Redis)
+	if err != nil {
+		slog.Warn("redis init failed, stats will use mysql fallback", "error", err)
+	}
+
 	if err := db.AutoMigrate(
 		&user.Entity{},
 		&comment.Entity{},
@@ -46,6 +52,7 @@ func main() {
 		&wallet.Entity{},
 		&wallet.Transaction{},
 		&order.CartItem{},
+		&stat.VisitLog{},
 	); err != nil {
 		slog.Error("auto migrate failed", "error", err)
 		os.Exit(1)
@@ -53,11 +60,12 @@ func main() {
 
 	slog.Info("database migration completed")
 
-	if _, err := database.NewRedis(&cfg.Redis); err != nil {
-		slog.Warn("redis init failed, continuing without redis", "error", err)
-	}
+	statRepo := stat.NewRepository(db, rdb)
+	statSvc := stat.NewService(statRepo)
 
-	r := router.Setup(cfg, db)
+	go stat.StartSyncLoop(statSvc)
+
+	r := router.Setup(cfg, db, rdb)
 
 	addr := ":" + strconv.Itoa(cfg.Server.Port)
 	srv := &http.Server{

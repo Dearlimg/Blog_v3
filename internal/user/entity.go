@@ -17,6 +17,8 @@ type Entity struct {
 	DeletedAt gorm.DeletedAt `json:"-" gorm:"index"`
 }
 
+func (Entity) TableName() string { return "users" }
+
 type LoginReq struct {
 	Email    string `json:"email" binding:"required,email"`
 	Password string `json:"password" binding:"required"`

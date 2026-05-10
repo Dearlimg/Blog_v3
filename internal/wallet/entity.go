@@ -15,6 +15,8 @@ type Entity struct {
 	DeletedAt gorm.DeletedAt `json:"-" gorm:"index"`
 }
 
+func (Entity) TableName() string { return "wallets" }
+
 type Transaction struct {
 	ID          uint           `json:"id" gorm:"primaryKey"`
 	WalletID    uint           `json:"wallet_id" gorm:"index;not null"`
@@ -26,6 +28,8 @@ type Transaction struct {
 	UpdatedAt   time.Time      `json:"updated_at"`
 	DeletedAt   gorm.DeletedAt `json:"-" gorm:"index"`
 }
+
+func (Transaction) TableName() string { return "transactions" }
 
 type AddBalanceReq struct {
 	Amount      float64 `json:"amount" binding:"required,gt=0"`

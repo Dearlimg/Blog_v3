@@ -18,6 +18,8 @@ type Entity struct {
 	DeletedAt gorm.DeletedAt `json:"-" gorm:"index"`
 }
 
+func (Entity) TableName() string { return "comments" }
+
 type CreateReq struct {
 	UserID   uint   `json:"user_id" binding:"required"`
 	Content  string `json:"content" binding:"required"`

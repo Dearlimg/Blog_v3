@@ -23,6 +23,8 @@ type Entity struct {
 	Product product.Entity `json:"product" gorm:"foreignKey:ProductID"`
 }
 
+func (Entity) TableName() string { return "orders" }
+
 type CreateReq struct {
 	ProductID uint   `json:"product_id" binding:"required"`
 	Quantity  int    `json:"quantity" binding:"required,gt=0"`
@@ -40,6 +42,8 @@ type CartItem struct {
 
 	Product product.Entity `json:"product" gorm:"foreignKey:ProductID"`
 }
+
+func (CartItem) TableName() string { return "cart_items" }
 
 type AddCartReq struct {
 	ProductID uint `json:"product_id" binding:"required"`

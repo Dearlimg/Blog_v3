@@ -18,3 +18,5 @@ type Entity struct {
 	UpdatedAt   time.Time      `json:"updated_at"`
 	DeletedAt   gorm.DeletedAt `json:"-" gorm:"index"`
 }
+
+func (Entity) TableName() string { return "products" }
