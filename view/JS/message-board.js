@@ -165,52 +165,30 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Function to fetch messages from your backend
     function fetchMessages() {
-        return fetch(`${API_CONFIG.MESSAGE_BOARD_URL}/getmessage`)
+        return API.get('/messages')
             .then((response) => {
-                console.log("Raw response:", response)
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`)
-                }
-                return response.json()
-            })
-            .then((data) => {
-                console.log("Raw API data:", data)
+                console.log("Raw API data:", response)
 
-                // Check if data is null or not an array
-                if (!data) {
-                    console.error("API returned null or undefined data")
+                if (!response.data || !Array.isArray(response.data)) {
                     return []
                 }
 
-                if (!Array.isArray(data)) {
-                    console.error("API did not return an array:", data)
-                    // Try to extract data from a wrapper object if possible
-                    if (data.data && Array.isArray(data.data)) {
-                        data = data.data
-                    } else {
-                        return []
-                    }
-                }
-
                 // Map backend data to frontend format
-                const mappedMessages = data
+                const mappedMessages = response.data
                     .map((item) => {
-                        console.log("Mapping item:", item) // Debug log for each item
-
                         if (!item) return null
 
                         return {
                             id: item.id,
                             name: item.name || "Anonymous",
                             email: item.email || "",
-                            // Try both content and message fields
-                            message: item.content || item.message || "",
-                            date: item.create_at || item.date || new Date().toISOString(),
+                            message: item.content || "",
+                            date: item.create_at || new Date().toISOString(),
                         }
                     })
-                    .filter((item) => item !== null) // Remove any null items
+                    .filter((item) => item !== null)
 
-                console.log("Mapped messages:", mappedMessages) // Debug log
+                console.log("Mapped messages:", mappedMessages)
                 return mappedMessages
             })
             .catch((error) => {
@@ -221,21 +199,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Function to save a new message
     function saveMessage(messageData) {
-        console.log("Sending message data:", messageData) // Debug log
-        return fetch(`${API_CONFIG.MESSAGE_BOARD_URL}/postmessage`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify(messageData),
-        })
+        console.log("Sending message data:", messageData)
+        return API.post('/messages', messageData)
             .then((response) => {
-                console.log("Save message response:", response) // Debug log
-
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`)
-                }
-                return response.json()
+                console.log("Save message response:", response)
+                return response
             })
             .catch((error) => {
                 console.error("Error saving message:", error)

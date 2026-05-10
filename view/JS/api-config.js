@@ -1,14 +1,7 @@
-// API配置文件
+// API配置文件 - 前后端一体化，使用相对路径
 const API_CONFIG = {
-    // API网关基础URL - 根据实际部署环境修改
-    BASE_URL: 'http://localhost:8000/api/v1',
-    // 或者使用部署地址（如果需要）
-    // BASE_URL: 'http://123.249.32.125:8000/api/v1',
-    
-    // 留言板API（独立服务）
-    // 如果留言板服务也在本地，使用: 'http://localhost:8002/api/message'
-    // 如果使用远程服务，使用: 'http://123.249.32.125:8002/api/message'
-    MESSAGE_BOARD_URL: 'http://localhost:8002/api/message'
+    BASE_URL: '/api/v1',
+    MESSAGE_BOARD_URL: '/api/v1'
 }
 
 // API工具函数

@@ -1,0 +1,4 @@
+config/config.yaml
+*.exe
+blog.db
+.idea/
