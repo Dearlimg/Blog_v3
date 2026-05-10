@@ -7,6 +7,7 @@
   <title>Durlim | Personal Website</title>
   <link rel="stylesheet" href="/view/css/styles.css">
   <link rel="stylesheet" href="/view/css/message-board.css">
+  <link rel="stylesheet" href="/view/css/work-experience.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
@@ -20,6 +21,7 @@
       <li><a href="https://github.com/Dearlimg" class="nav-item">Backend</a></li>
       <li><a href="https://github.com/Dearlimg" class="nav-item">Code</a></li>
       <li><a href="#projects" class="nav-item">Projects</a></li>
+      <li><a href="#experience" class="nav-item">Experience</a></li>
     </ul>
   </nav>
   <div class="social-links">
@@ -134,6 +136,78 @@
       <div class="course-item">Pattern Recognition</div>
       <div class="course-item">Natural Language Processing</div>
       <div class="course-item">Big Data Processing</div>
+    </div>
+  </section>
+
+  <section id="experience" class="experience">
+    <h2>Work Experience</h2>
+    <div class="experience-cards">
+
+      <!-- 腾讯 TEG -->
+      <div class="exp-card" onclick="this.querySelector('.exp-detail').classList.toggle('active'); this.querySelector('.exp-card-header').classList.toggle('expanded')">
+        <div class="exp-card-header">
+          <div class="exp-logo">
+            <img src="https://ts1.tc.mm.bing.net/th/id/R-C.3d05956946532c39abe7c113cf70e889?rik=tKJzzI%2bedrVKJw&riu=http%3a%2f%2fwww.szquanli.com%2fuploads%2fallimg%2f171123%2f2-1G123105G7-50.png&ehk=aRFfrTamvQaCWEjSZI5pwGiDbY1tuPKxnle3w2J4hkU%3d&risl=&pid=ImgRaw&r=0" alt="Tencent">
+          </div>
+          <div class="exp-info">
+            <div class="exp-company">Tencent · TEG</div>
+            <div class="exp-position">Backend Development Engineer</div>
+            <div class="exp-team">Security Platform — Agent Infrastructure</div>
+          </div>
+          <div class="exp-meta">
+            <span><i class="far fa-calendar-alt"></i> 2026.05 - Present</span>
+          </div>
+          <div class="exp-toggle"><i class="fas fa-chevron-down"></i></div>
+        </div>
+        <div class="exp-detail">
+          <h4>Key Responsibilities</h4>
+          <ul class="exp-desc-list">
+            <li>Responsible for the end-to-end chain construction and development of the security protection agent system, establishing a unified data pipeline from endpoint collection to backend analysis</li>
+            <li>Design the overall system architecture including agent deployment strategy, communication protocol selection, and component decoupling to ensure scalability and maintainability</li>
+            <li>Implement core agent-side modules in Go covering endpoint monitoring, log collection, asset discovery, and real-time threat detection capabilities</li>
+            <li>Collaborate with the central security platform team to define data models, API contracts, and event processing workflows</li>
+            <li>Conduct technical research and proof-of-concept validation for high-performance data streaming and low-latency alerting</li>
+          </ul>
+          <div class="exp-tech">
+            <span>Go</span><span>gRPC</span><span>Kafka</span><span>MySQL</span><span>Redis</span>
+            <span>Docker</span><span>Linux</span><span>Security</span><span>Distributed Systems</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 蚂蚁集团 -->
+      <div class="exp-card" onclick="this.querySelector('.exp-detail').classList.toggle('active'); this.querySelector('.exp-card-header').classList.toggle('expanded')">
+        <div class="exp-card-header">
+          <div class="exp-logo">
+            <img src="https://tse3-mm.cn.bing.net/th/id/OIP-C.jrvyo3D2KCPTAzxk9p-CwAHaEt?o=7rm=3&rs=1&pid=ImgDetMain&o=7&rm=3" alt="Ant Group">
+          </div>
+          <div class="exp-info">
+            <div class="exp-company">Ant Group</div>
+            <div class="exp-position">Backend Development Engineer</div>
+            <div class="exp-team">Platform Engineering — Core Pipeline &amp; Security Drill</div>
+          </div>
+          <div class="exp-meta">
+            <span><i class="far fa-calendar-alt"></i> 2025.09 - 2026.02</span>
+          </div>
+          <div class="exp-toggle"><i class="fas fa-chevron-down"></i></div>
+        </div>
+        <div class="exp-detail">
+          <h4>Key Responsibilities</h4>
+          <ul class="exp-desc-list">
+            <li>Led the refactoring of the platform's core pipeline module using Argo Workflows, migrating legacy orchestration logic to a declarative, cloud-native workflow engine</li>
+            <li>Achieved significant improvements in pipeline execution stability through automated retry strategies, task dependency management, and failure isolation mechanisms</li>
+            <li>Reduced average pipeline execution time and improved resource utilization through parallelized task scheduling and intelligent resource allocation</li>
+            <li>Served as the primary owner for the Red-Blue Attack-Defense drill module, designing and implementing the full lifecycle from scenario configuration and drill orchestration to result evaluation and reporting</li>
+            <li>Established a comprehensive security exercise framework enabling routine adversarial testing, vulnerability discovery, and continuous improvement of system defense capabilities</li>
+            <li>Collaborated across infrastructure and security teams to integrate the drill module into the broader stability governance platform</li>
+          </ul>
+          <div class="exp-tech">
+            <span>Go</span><span>Argo Workflows</span><span>Kubernetes</span><span>MySQL</span><span>Redis</span>
+            <span>Gin</span><span>GORM</span><span>gRPC</span><span>Security Engineering</span>
+          </div>
+        </div>
+      </div>
+
     </div>
   </section>
 
