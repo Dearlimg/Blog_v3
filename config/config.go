@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strconv"
 
 	"gopkg.in/yaml.v3"
 )
@@ -70,5 +71,55 @@ func Load(path string) (*Config, error) {
 		return nil, fmt.Errorf("parse config file: %w", err)
 	}
 
+	cfg.applyEnvOverrides()
 	return cfg, nil
+}
+
+func (c *Config) applyEnvOverrides() {
+	if v := os.Getenv("SERVER_PORT"); v != "" {
+		c.Server.Port, _ = strconv.Atoi(v)
+	}
+
+	if v := os.Getenv("DB_HOST"); v != "" {
+		c.Database.Host = v
+	}
+	if v := os.Getenv("DB_PORT"); v != "" {
+		c.Database.Port, _ = strconv.Atoi(v)
+	}
+	if v := os.Getenv("DB_USER"); v != "" {
+		c.Database.Username = v
+	}
+	if v := os.Getenv("DB_PASSWORD"); v != "" {
+		c.Database.Password = v
+	}
+	if v := os.Getenv("DB_NAME"); v != "" {
+		c.Database.Database = v
+	}
+
+	if v := os.Getenv("REDIS_ADDR"); v != "" {
+		c.Redis.Host, c.Redis.Port = parseAddr(v)
+	}
+	if v := os.Getenv("REDIS_PASSWORD"); v != "" {
+		c.Redis.Password = v
+	}
+	if v := os.Getenv("REDIS_DB"); v != "" {
+		c.Redis.DB, _ = strconv.Atoi(v)
+	}
+
+	if v := os.Getenv("JWT_SECRET"); v != "" {
+		c.JWT.SecretKey = v
+	}
+	if v := os.Getenv("JWT_EXPIRE"); v != "" {
+		c.JWT.Expire, _ = strconv.Atoi(v)
+	}
+}
+
+func parseAddr(addr string) (string, int) {
+	for i := len(addr) - 1; i >= 0; i-- {
+		if addr[i] == ':' {
+			port, _ := strconv.Atoi(addr[i+1:])
+			return addr[:i], port
+		}
+	}
+	return addr, 6379
 }
