@@ -23,6 +23,11 @@ func shouldRecord(c *gin.Context) bool {
 		return false
 	}
 
+	// Health checks (docker healthcheck hits /health every 30s) must not count as visits
+	if path == "/health" {
+		return false
+	}
+
 	if strings.HasPrefix(path, "/api/") || strings.HasPrefix(path, "/view/") || strings.HasPrefix(path, "/static/") {
 		return false
 	}
