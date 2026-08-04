@@ -62,6 +62,13 @@ function animateOrbitDots() {
 
     const container = document.querySelector(".profile-container")
 
+    // A dot freezes in place while the mouse is hovering over it
+    const hoveredDots = new Set()
+    dots.forEach((dot) => {
+        dot.el.addEventListener("mouseenter", () => hoveredDots.add(dot))
+        dot.el.addEventListener("mouseleave", () => hoveredDots.delete(dot))
+    })
+
     // Geometry is re-measured on resize
     let centerX = 0
     let centerY = 0
@@ -83,9 +90,11 @@ function animateOrbitDots() {
         lastTime = timestamp
 
         dots.forEach((dot) => {
-            // Advance orbit angle and floating phase by the elapsed time
-            dot.angle = (dot.angle ?? dot.startAngle) + dot.speed * delta
-            dot.floatPhase = (dot.floatPhase ?? 0) + dot.floatSpeed * delta
+            // Advance orbit angle and floating phase only while not hovered
+            if (!hoveredDots.has(dot)) {
+                dot.angle = (dot.angle ?? dot.startAngle) + dot.speed * delta
+                dot.floatPhase = (dot.floatPhase ?? 0) + dot.floatSpeed * delta
+            }
 
             const x = centerX + radius * Math.cos(dot.angle)
             // Vertical sine offset gives the bobbing / floating feel

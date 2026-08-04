@@ -3,37 +3,116 @@
     margin-bottom: 4rem;
 }
 
-.experience-cards {
-    display: flex;
-    flex-direction: column;
-    gap: 2rem;
+.experience h2 {
+    margin-bottom: 2rem;
 }
 
+/* Timeline container with vertical guide line */
+.experience-timeline {
+    position: relative;
+    padding-left: 2.2rem;
+}
+
+.experience-timeline::before {
+    content: "";
+    position: absolute;
+    left: 7px;
+    top: 8px;
+    bottom: 8px;
+    width: 2px;
+    background: linear-gradient(
+        to bottom,
+        var(--primary-color),
+        var(--secondary-color),
+        rgba(84, 160, 255, 0.15)
+    );
+    border-radius: 2px;
+}
+
+/* Each timeline node */
+.exp-item {
+    position: relative;
+    margin-bottom: 2rem;
+}
+
+.exp-item:last-child {
+    margin-bottom: 0;
+}
+
+/* Node marker (dot) on the timeline */
+.exp-marker {
+    position: absolute;
+    left: -2.2rem;
+    top: 1.9rem;
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.exp-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--card-bg);
+    border: 3px solid var(--primary-color);
+    box-shadow: 0 0 0 4px rgba(255, 159, 67, 0.18);
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.exp-item:nth-child(2) .exp-dot {
+    border-color: var(--secondary-color);
+    box-shadow: 0 0 0 4px rgba(84, 160, 255, 0.18);
+}
+
+.exp-card:hover .exp-dot {
+    transform: scale(1.35);
+    box-shadow: 0 0 0 7px rgba(255, 159, 67, 0.22);
+}
+
+.exp-item:nth-child(2) .exp-card:hover .exp-dot {
+    box-shadow: 0 0 0 7px rgba(84, 160, 255, 0.22);
+}
+
+/* Card */
 .exp-card {
     background-color: var(--card-bg);
-    border-radius: 10px;
-    padding: 1.5rem 2rem;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    border-radius: 14px;
+    padding: 1.4rem 1.6rem;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.06);
     transition: transform 0.3s, box-shadow 0.3s;
     cursor: pointer;
-    border-left: 4px solid var(--primary-color);
     position: relative;
     overflow: hidden;
+    border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+/* Gradient accent bar on top of the card */
+.exp-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--primary-color), var(--hover-color));
+    opacity: 0.85;
+}
+
+.exp-item:nth-child(2) .exp-card::before {
+    background: linear-gradient(90deg, var(--secondary-color), #a29bfe);
 }
 
 .exp-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
-}
-
-.exp-card:first-child {
-    border-left-color: var(--secondary-color);
+    transform: translateY(-4px);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.12);
 }
 
 .exp-card-header {
     display: flex;
     align-items: center;
-    gap: 1.2rem;
+    gap: 1.1rem;
 }
 
 .exp-card-header.expanded .exp-toggle i {
@@ -41,16 +120,23 @@
 }
 
 .exp-logo {
-    width: 52px;
-    height: 52px;
-    border-radius: 12px;
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
     overflow: hidden;
     background-color: #fff;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    border: 1px solid var(--border-color);
+    padding: 6px;
+    transition: transform 0.3s;
+}
+
+.exp-card:hover .exp-logo {
+    transform: scale(1.06) rotate(-3deg);
 }
 
 .exp-logo img {
@@ -65,17 +151,21 @@
 }
 
 .exp-company {
-    font-size: 1.2rem;
+    font-size: 1.25rem;
     font-weight: 700;
     color: var(--text-color);
-    margin-bottom: 2px;
+    margin-bottom: 3px;
 }
 
 .exp-position {
     font-size: 0.95rem;
     color: var(--primary-color);
     font-weight: 600;
-    margin-bottom: 2px;
+    margin-bottom: 3px;
+}
+
+.exp-item:nth-child(2) .exp-position {
+    color: var(--secondary-color);
 }
 
 .exp-team {
@@ -86,74 +176,140 @@
 .exp-meta {
     display: flex;
     align-items: center;
-    gap: 0.8rem;
+    gap: 0.6rem;
     flex-shrink: 0;
     color: var(--light-text);
     font-size: 0.85rem;
 }
 
-.exp-meta i {
+.exp-period i {
     color: var(--primary-color);
     font-size: 0.8rem;
+    margin-right: 4px;
+}
+
+/* "Current" badge */
+.exp-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 20px;
+    letter-spacing: 0.3px;
+}
+
+.exp-badge i {
+    font-size: 0.5rem;
+    animation: pulse 1.6s ease-in-out infinite;
+}
+
+.exp-badge.current {
+    color: #10ac84;
+    background-color: rgba(16, 172, 132, 0.12);
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
 }
 
 .exp-toggle {
     flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background-color: rgba(0, 0, 0, 0.04);
     color: var(--light-text);
-    font-size: 0.9rem;
-    transition: transform 0.3s;
+    transition: background-color 0.3s, color 0.3s;
 }
 
 .exp-toggle i {
     transition: transform 0.3s;
+    font-size: 0.8rem;
 }
 
+.exp-card:hover .exp-toggle {
+    background-color: rgba(255, 159, 67, 0.12);
+    color: var(--primary-color);
+}
+
+/* Expandable detail with smooth height animation */
 .exp-detail {
-    display: none;
-    margin-top: 1.2rem;
-    padding-top: 1.2rem;
-    border-top: 1px solid var(--border-color);
-    animation: fadeIn 0.3s ease;
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0 solid var(--border-color);
+    transition: max-height 0.45s ease, opacity 0.35s ease, padding 0.45s ease, margin 0.45s ease;
 }
 
 .exp-detail.active {
-    display: block;
+    max-height: 2000px;
+    opacity: 1;
+    margin-top: 1.2rem;
+    padding-top: 1.2rem;
+    border-top: 1px solid var(--border-color);
 }
 
 .exp-detail h4 {
-    font-size: 0.9rem;
-    color: var(--primary-color);
-    margin-bottom: 0.8rem;
-    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--light-text);
+    margin-bottom: 1rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.exp-detail h4::before {
+    content: "";
+    width: 22px;
+    height: 2px;
+    background-color: var(--primary-color);
+    border-radius: 2px;
 }
 
 .exp-desc-list {
     list-style: none;
     padding: 0;
+    margin: 0;
 }
 
 .exp-desc-list li {
     position: relative;
-    padding-left: 1.2rem;
-    margin-bottom: 0.6rem;
+    padding-left: 1.6rem;
+    margin-bottom: 0.9rem;
     color: var(--text-color);
     font-size: 0.92rem;
-    line-height: 1.7;
+    line-height: 1.75;
 }
 
 .exp-desc-list li::before {
-    content: "";
+    content: "\f058";
+    font-family: "Font Awesome 6 Free";
+    font-weight: 400;
     position: absolute;
     left: 0;
-    top: 10px;
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background-color: var(--primary-color);
+    top: 4px;
+    font-size: 0.85rem;
+    color: var(--primary-color);
+}
+
+.exp-desc-list li strong {
+    color: var(--text-color);
+    font-weight: 700;
 }
 
 .exp-tech {
-    margin-top: 1rem;
+    margin-top: 1.1rem;
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
@@ -162,20 +318,44 @@
 .exp-tech span {
     background-color: rgba(255, 159, 67, 0.1);
     color: var(--primary-color);
-    padding: 0.3rem 0.8rem;
+    padding: 0.32rem 0.85rem;
     border-radius: 20px;
-    font-size: 0.8rem;
+    font-size: 0.78rem;
+    font-weight: 500;
+    border: 1px solid rgba(255, 159, 67, 0.18);
+    transition: background-color 0.3s, transform 0.3s;
 }
 
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-8px); }
-    to   { opacity: 1; transform: translateY(0); }
+.exp-tech span:hover {
+    background-color: var(--primary-color);
+    color: #fff;
+    transform: translateY(-2px);
+}
+
+.exp-item:nth-child(2) .exp-tech span {
+    background-color: rgba(84, 160, 255, 0.1);
+    color: var(--secondary-color);
+    border-color: rgba(84, 160, 255, 0.18);
+}
+
+.exp-item:nth-child(2) .exp-tech span:hover {
+    background-color: var(--secondary-color);
+    color: #fff;
 }
 
 /* Responsive */
 @media (max-width: 768px) {
+    .experience-timeline {
+        padding-left: 1.6rem;
+    }
+
+    .exp-marker {
+        left: -1.6rem;
+        top: 1.5rem;
+    }
+
     .exp-card {
-        padding: 1.2rem;
+        padding: 1.1rem;
     }
 
     .exp-card-header {
@@ -183,7 +363,13 @@
         gap: 0.8rem;
     }
 
+    .exp-logo {
+        width: 48px;
+        height: 48px;
+    }
+
     .exp-meta {
         flex-basis: 100%;
+        order: 3;
     }
 }
