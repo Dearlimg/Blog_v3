@@ -216,6 +216,14 @@ main {
     background-image: url("https://ts4.tc.mm.bing.net/th/id/ODLS.9ddcbc84-0032-4db2-b077-1679ffd11b42?w=32&h=32&qlt=90&pcl=fffffc&r=0&o=6&pid=1.2");
 }
 
+.ant-dot {
+    background-image: url("https://tse3-mm.cn.bing.net/th/id/OIP-C.jrvyo3D2KCPTAzxk9p-CwAHaEt?o=7rm=3&rs=1&pid=ImgDetMain&o=7&rm=3");
+}
+
+.tencent-dot {
+    background-image: url("https://ts1.tc.mm.bing.net/th/id/R-C.3d05956946532c39abe7c113cf70e889?rik=tKJzzI%2bedrVKJw&riu=http%3a%2f%2fwww.szquanli.com%2fuploads%2fallimg%2f171123%2f2-1G123105G7-50.png&ehk=aRFfrTamvQaCWEjSZI5pwGiDbY1tuPKxnle3w2J4hkU%3d&risl=&pid=ImgRaw&r=0");
+}
+
 /* Profile Container with Circle */
 .profile-container::before {
     content: "";

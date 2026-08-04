@@ -58,6 +58,8 @@
     <div class="orbit-dot google-dot"></div>
     <div class="orbit-dot microsoft-dot"></div>
     <div class="orbit-dot bytedance-dot"></div>
+    <div class="orbit-dot ant-dot"></div>
+    <div class="orbit-dot tencent-dot"></div>
   </div>
 
   <section class="tech-stack">
@@ -162,15 +164,16 @@
         <div class="exp-detail">
           <h4>Key Responsibilities</h4>
           <ul class="exp-desc-list">
-            <li>Responsible for the end-to-end chain construction and development of the security protection agent system, establishing a unified data pipeline from endpoint collection to backend analysis</li>
-            <li>Design the overall system architecture including agent deployment strategy, communication protocol selection, and component decoupling to ensure scalability and maintainability</li>
-            <li>Implement core agent-side modules in Go covering endpoint monitoring, log collection, asset discovery, and real-time threat detection capabilities</li>
-            <li>Collaborate with the central security platform team to define data models, API contracts, and event processing workflows</li>
-            <li>Conduct technical research and proof-of-concept validation for high-performance data streaming and low-latency alerting</li>
+            <li><strong>Multi-node Concurrent Task Orchestration & Scheduling (Core):</strong> designed a "create-order / dispatch-decoupled" architecture with full task-state persistence for resume-from-checkpoint after process restarts; dispatch via absolute start timestamps achieves synchronized second-level concurrency across machines, breaking the single-machine throughput bottleneck to support 500K-level HTTP traffic evaluation; 650+ end-to-end unit tests covering routing, concurrent dispatch, failure determination, and other edge cases.</li>
+            <li><strong>Control-Plane / Data-Plane Split-Brain Handling:</strong> for the split-brain scenario where "dispatch requests time out but the node has actually accepted the order", used idempotent progress probing to confirm the real acceptance state, eliminating permanent loss of evaluation data caused by misjudged FAILED status.</li>
+            <li><strong>Proactive Health-Check Liveness Detection:</strong> replaced passive node reporting with platform-side polling (pull) for liveness; a three-tier mechanism of consecutive-failure determination + soft-revival probing + hard-timeout fallback keeps liveness stable even when attack tools saturate node resources.</li>
+            <li><strong>Distributed Time-Series Metrics Collection (False-Positive Rate Measurement):</strong> second-level bucketing + attack-window aggregation time-series scheme; under sustained probing across 10 nodes, precisely slices any attack window from the continuous data stream; unified "total-sum" false-positive-rate metric avoids the statistical distortion of averaging ratios across nodes.</li>
+            <li><strong>AI Engineering — Fix Closed-Loop & Multi-Agent Collaboration:</strong> wrapped a weakness-fix progress reporting tool over the MCP protocol for coding agents to call, building an "agent auto-report → visualization dashboard" fix closed-loop; explored multi-agent collaboration workflows, validating agents autonomously completing the end-to-end development chain of "branch → develop → merge".</li>
           </ul>
           <div class="exp-tech">
             <span>Go</span><span>gRPC</span><span>Kafka</span><span>MySQL</span><span>Redis</span>
             <span>Docker</span><span>Linux</span><span>Security</span><span>Distributed Systems</span>
+            <span>Task Orchestration</span><span>MCP</span><span>Multi-Agent</span>
           </div>
         </div>
       </div>
@@ -184,7 +187,7 @@
           <div class="exp-info">
             <div class="exp-company">Ant Group</div>
             <div class="exp-position">Backend Development Engineer</div>
-            <div class="exp-team">Platform Engineering — Core Pipeline &amp; Security Drill</div>
+            <div class="exp-team">Platform Engineering — Core Pipeline (Argo Workflows)</div>
           </div>
           <div class="exp-meta">
             <span><i class="far fa-calendar-alt"></i> 2025.09 - 2026.02</span>
@@ -197,13 +200,10 @@
             <li>Led the refactoring of the platform's core pipeline module using Argo Workflows, migrating legacy orchestration logic to a declarative, cloud-native workflow engine</li>
             <li>Achieved significant improvements in pipeline execution stability through automated retry strategies, task dependency management, and failure isolation mechanisms</li>
             <li>Reduced average pipeline execution time and improved resource utilization through parallelized task scheduling and intelligent resource allocation</li>
-            <li>Served as the primary owner for the Red-Blue Attack-Defense drill module, designing and implementing the full lifecycle from scenario configuration and drill orchestration to result evaluation and reporting</li>
-            <li>Established a comprehensive security exercise framework enabling routine adversarial testing, vulnerability discovery, and continuous improvement of system defense capabilities</li>
-            <li>Collaborated across infrastructure and security teams to integrate the drill module into the broader stability governance platform</li>
           </ul>
           <div class="exp-tech">
             <span>Go</span><span>Argo Workflows</span><span>Kubernetes</span><span>MySQL</span><span>Redis</span>
-            <span>Gin</span><span>GORM</span><span>gRPC</span><span>Security Engineering</span>
+            <span>Gin</span><span>GORM</span><span>gRPC</span>
           </div>
         </div>
       </div>

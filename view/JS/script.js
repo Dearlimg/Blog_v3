@@ -49,71 +49,56 @@ document.addEventListener("DOMContentLoaded", () => {
 })
 
 function animateOrbitDots() {
-    const googleDot = document.querySelector(".google-dot")
-    const microsoftDot = document.querySelector(".microsoft-dot")
-    const bytedanceDot = document.querySelector(".bytedance-dot")
+    // Each dot has its own starting angle, rotation speed, and floating params.
+    // floatSpeed / floatPhase drive a vertical sine offset so dots bob up and down
+    // while they travel around the orbit.
+    const dots = [
+        { el: document.querySelector(".google-dot"), startAngle: 0.3, speed: 0.000275, floatSpeed: 0.00035, floatAmp: 14, floatPhase: 0 },
+        { el: document.querySelector(".microsoft-dot"), startAngle: 1.9, speed: 0.000475, floatSpeed: 0.0005, floatAmp: 10, floatPhase: 2.1 },
+        { el: document.querySelector(".bytedance-dot"), startAngle: 3.5, speed: 0.000725, floatSpeed: 0.0007, floatAmp: 18, floatPhase: 4.2 },
+        { el: document.querySelector(".ant-dot"), startAngle: 4.9, speed: 0.00035, floatSpeed: 0.000425, floatAmp: 12, floatPhase: 1.1 },
+        { el: document.querySelector(".tencent-dot"), startAngle: 0.9, speed: 0.0006, floatSpeed: 0.00085, floatAmp: 8, floatPhase: 3.3 },
+    ].filter((d) => d.el)
 
-    // Get the container dimensions
     const container = document.querySelector(".profile-container")
-    const containerRect = container.getBoundingClientRect()
 
-    // Calculate the center of the container
-    const centerX = containerRect.width / 2
-    const centerY = containerRect.height / 2
+    // Geometry is re-measured on resize
+    let centerX = 0
+    let centerY = 0
+    let radius = 0
+    function measure() {
+        const rect = container.getBoundingClientRect()
+        centerX = rect.width / 2
+        centerY = rect.height / 2
+        radius = Math.min(rect.width, rect.height) * 0.6
+    }
+    measure()
+    window.addEventListener("resize", measure)
 
-    // Set the same radius for all dots - slightly reduced to ensure visibility
-    const radius = Math.min(containerRect.width, containerRect.height) * 0.6
+    // Timestamp-driven so movement speed stays consistent at any refresh rate
+    let lastTime = null
+    function updatePositions(timestamp) {
+        if (lastTime === null) lastTime = timestamp
+        const delta = timestamp - lastTime
+        lastTime = timestamp
 
-    // Set different speeds for each dot
-    const speed1 = 0.0015 // Google - slowest
-    const speed2 = 0.0025 // Microsoft - medium
-    const speed3 = 0.0035 // ByteDance - fastest
+        dots.forEach((dot) => {
+            // Advance orbit angle and floating phase by the elapsed time
+            dot.angle = (dot.angle ?? dot.startAngle) + dot.speed * delta
+            dot.floatPhase = (dot.floatPhase ?? 0) + dot.floatSpeed * delta
 
-    // Set initial angles with equal spacing
-    let angle1 = 0
-    let angle2 = (2 * Math.PI) / 3 // 120 degrees offset
-    let angle3 = (4 * Math.PI) / 3 // 240 degrees offset
+            const x = centerX + radius * Math.cos(dot.angle)
+            // Vertical sine offset gives the bobbing / floating feel
+            const y = centerY + radius * Math.sin(dot.angle) + dot.floatAmp * Math.sin(dot.floatPhase)
 
-    function updatePositions() {
-        // Calculate new positions for each dot
+            dot.el.style.left = `${x}px`
+            dot.el.style.top = `${y}px`
+            dot.el.style.transform = "translate(-50%, -50%)"
+        })
 
-        // Google dot
-        const x1 = centerX + radius * Math.cos(angle1)
-        const y1 = centerY + radius * Math.sin(angle1)
-        googleDot.style.left = `${x1}px`
-        googleDot.style.top = `${y1}px`
-        googleDot.style.transform = "translate(-50%, -50%)"
-
-        // Microsoft dot
-        const x2 = centerX + radius * Math.cos(angle2)
-        const y2 = centerY + radius * Math.sin(angle2)
-        microsoftDot.style.left = `${x2}px`
-        microsoftDot.style.top = `${y2}px`
-        microsoftDot.style.transform = "translate(-50%, -50%)"
-
-        // ByteDance dot
-        const x3 = centerX + radius * Math.cos(angle3)
-        const y3 = centerY + radius * Math.sin(angle3)
-        bytedanceDot.style.left = `${x3}px`
-        bytedanceDot.style.top = `${y3}px`
-        bytedanceDot.style.transform = "translate(-50%, -50%)"
-
-        // Update angles for next frame
-        angle1 += speed1
-        angle2 += speed2
-        angle3 += speed3
-
-        // Continue animation
         requestAnimationFrame(updatePositions)
     }
 
     // Start the animation
-    updatePositions()
-
-    // Update positions when window is resized
-    window.addEventListener("resize", () => {
-        const containerRect = container.getBoundingClientRect()
-        const centerX = containerRect.width / 2
-        const centerY = containerRect.height / 2
-    })
+    requestAnimationFrame(updatePositions)
 }
