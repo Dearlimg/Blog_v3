@@ -34,6 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }, { rootMargin: '-15% 0px -60% 0px' });
   navLinks.forEach(link => {
+    if (!link.hash) return;
     const section = document.querySelector(link.hash);
     if (section) observer.observe(section);
   });

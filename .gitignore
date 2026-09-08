@@ -13,3 +13,5 @@ agent-server.exe
 blog-front
 data
 *.exe~
+node_modules/
+work/

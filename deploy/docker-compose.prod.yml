@@ -15,6 +15,7 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRE: ${JWT_EXPIRE:-7200}
+      BLOG_OWNER_USER_ID: ${BLOG_OWNER_USER_ID:-0}
     depends_on:
       mysql:
         condition: service_healthy

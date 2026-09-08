@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>写作台 | Durlim</title>
+    <link rel="stylesheet" href="/view/css/articles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="/">Durlim<span>.</span></a>
+      <nav>
+        <a href="/articles">公开文章</a
+        ><a href="/studio/articles" aria-current="page">写作台</a>
+      </nav>
+    </header>
+    <main class="page">
+      <div class="page-heading">
+        <div>
+          <p class="eyebrow">PERSONAL STUDIO</p>
+          <h1>我的文章</h1>
+        </div>
+      </div>
+      <p id="notice" role="status" hidden></p>
+      <section id="login-panel" class="login-panel" hidden>
+        <h2>博主登录</h2>
+        <form id="login-form">
+          <label
+            >邮箱<input
+              name="email"
+              type="email"
+              autocomplete="username"
+              required /></label
+          ><label
+            >密码<input
+              name="password"
+              type="password"
+              autocomplete="current-password"
+              required /></label
+          ><button class="primary">登录</button>
+        </form>
+      </section>
+      <div id="studio-content" hidden>
+        <div class="studio-toolbar">
+          <div id="state-tabs" class="tabs">
+            <button data-state="" aria-pressed="true">全部</button
+            ><button data-state="draft" aria-pressed="false">草稿</button
+            ><button data-state="published" aria-pressed="false">已发布</button
+            ><button data-state="trash" aria-pressed="false">回收站</button>
+          </div>
+          <div class="actions">
+            <button id="new-article" class="primary">
+              <i data-lucide="plus"></i>新建文章</button
+            ><button
+              id="logout"
+              class="icon-button"
+              title="退出登录"
+              aria-label="退出登录"
+            >
+              <i data-lucide="log-out"></i>
+            </button>
+          </div>
+        </div>
+        <section id="local-section" hidden>
+          <h2 class="small-heading">本地草稿与备份</h2>
+          <div id="local-list"></div>
+        </section>
+        <section id="article-list" aria-label="我的文章"></section>
+        <div class="pagination">
+          <button
+            id="previous"
+            class="icon-button"
+            title="上一页"
+            aria-label="上一页"
+          >
+            <i data-lucide="arrow-left"></i></button
+          ><span id="page-label"></span
+          ><button
+            id="next"
+            class="icon-button"
+            title="下一页"
+            aria-label="下一页"
+          >
+            <i data-lucide="arrow-right"></i>
+          </button>
+        </div>
+      </div>
+    </main>
+    <script type="module" src="/static/article-build/studio.js"></script>
+  </body>
+</html>

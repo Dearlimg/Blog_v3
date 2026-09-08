@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>文章 | Durlim</title>
+    <link rel="stylesheet" href="/view/css/articles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="/">Durlim<span>.</span></a>
+      <nav><a href="/">首页</a><a href="/articles">文章</a></nav>
+    </header>
+    <main class="page reading-page">
+      <a class="back-link" href="/articles"
+        ><i data-lucide="arrow-left"></i> 所有文章</a
+      >
+      <p id="notice" role="status" hidden></p>
+      <div class="reading-layout">
+        <article>
+          <header class="reading-header">
+            <p id="article-meta" class="eyebrow"></p>
+            <h1 id="article-title">正在加载…</h1>
+            <p id="article-summary" class="summary"></p>
+            <div id="article-tags" class="tags"></div>
+          </header>
+          <div id="article-body" class="prose"></div>
+        </article>
+        <aside id="toc-shell" hidden>
+          <h2>目录</h2>
+          <nav id="toc" aria-label="文章目录"></nav>
+        </aside>
+      </div>
+    </main>
+    <footer>Durlim / Articles</footer>
+    <script type="module" src="/static/article-build/public.js"></script>
+  </body>
+</html>

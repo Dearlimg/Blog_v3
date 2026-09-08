@@ -3,6 +3,7 @@ package router
 import (
 	"blog-front/config"
 	"blog-front/internal/agent"
+	"blog-front/internal/article"
 	"blog-front/internal/comment"
 	"blog-front/internal/message"
 	"blog-front/internal/order"
@@ -35,6 +36,7 @@ func Setup(cfg *config.Config, db *gorm.DB, rdb *redis.Client) *gin.Engine {
 	r.StaticFile("/index.html", "./index.html")
 	r.GET("/agent", func(c *gin.Context) { c.File("./view/html/agent.html") })
 	r.GET("/", func(c *gin.Context) { c.File("./index.html") })
+	article.Register(r, db, cfg.JWT.SecretKey, cfg.BlogOwnerUserID)
 
 	if err := agent.RegisterFromEnv(r); err != nil {
 		slog.Error("agent initialization failed; agent endpoints disabled")

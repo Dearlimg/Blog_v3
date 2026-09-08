@@ -8,6 +8,7 @@
   --accent: #24634f;
   --soft: #eaf1ed;
 }
+.recent-articles{order:2;padding-block:40px 56px}.recent-article{padding:20px 0;border-top:1px solid var(--line)}.recent-article h3{font-size:21px;overflow-wrap:anywhere}.recent-article p{margin-top:8px;color:var(--muted);font-size:14px;overflow-wrap:anywhere}
 * { box-sizing: border-box; letter-spacing: 0; }
 html { scroll-behavior: smooth; scroll-padding-top: 100px; }
 body { margin: 0; background: var(--paper); color: var(--ink); font: 15px/1.7 "Segoe UI", Arial, sans-serif; -webkit-font-smoothing: antialiased; }

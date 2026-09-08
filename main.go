@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"blog-front/config"
+	"blog-front/internal/article"
 	"blog-front/internal/comment"
 	"blog-front/internal/message"
 	"blog-front/internal/order"
@@ -44,6 +45,7 @@ func main() {
 	}
 
 	if err := db.AutoMigrate(
+		&article.Entity{}, &article.Draft{}, &article.Revision{}, &article.Asset{}, &article.Receipt{},
 		&user.Entity{},
 		&comment.Entity{},
 		&message.Entity{},

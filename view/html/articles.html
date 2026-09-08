@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>文章 | Durlim</title>
+    <link rel="stylesheet" href="/view/css/articles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="/">Durlim<span>.</span></a>
+      <nav>
+        <a href="/">首页</a><a href="/articles" aria-current="page">文章</a
+        ><a href="/studio/articles">写作台</a>
+      </nav>
+    </header>
+    <main class="page">
+      <div class="page-heading">
+        <div>
+          <p class="eyebrow">DURLIM / ARTICLES</p>
+          <h1>文章与记录</h1>
+        </div>
+        <img
+          class="author-avatar"
+          src="/static/Ava.jpg"
+          alt="Durlim"
+          width="56"
+          height="56"
+        />
+      </div>
+      <form id="filters" class="filters">
+        <label class="search-field"
+          ><span class="sr-only">搜索文章</span
+          ><input
+            id="keyword"
+            type="search"
+            placeholder="搜索文章"
+            maxlength="100" /><button
+            class="icon-button"
+            title="搜索"
+            aria-label="搜索"
+          >
+            <i data-lucide="search"></i></button></label
+        ><label
+          ><span class="sr-only">分类</span
+          ><select id="category">
+            <option value="">全部分类</option>
+            <option value="fundamentals">面试八股</option>
+            <option value="project">项目复盘</option>
+            <option value="notes">学习记录</option>
+            <option value="interview">面试记录</option>
+          </select></label
+        ><label
+          ><span class="sr-only">标签</span
+          ><input id="tag" placeholder="标签" maxlength="40"
+        /></label>
+      </form>
+      <p id="notice" role="status" hidden></p>
+      <section id="article-list" aria-label="文章列表">
+        <p class="empty">正在加载…</p>
+      </section>
+      <div class="pagination">
+        <button
+          id="previous"
+          class="icon-button"
+          title="上一页"
+          aria-label="上一页"
+        >
+          <i data-lucide="arrow-left"></i></button
+        ><span id="page-label"></span
+        ><button
+          id="next"
+          class="icon-button"
+          title="下一页"
+          aria-label="下一页"
+        >
+          <i data-lucide="arrow-right"></i>
+        </button>
+      </div>
+    </main>
+    <footer>Durlim / Articles</footer>
+    <script type="module" src="/static/article-build/public.js"></script>
+  </body>
+</html>

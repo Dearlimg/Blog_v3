@@ -72,7 +72,7 @@ const API = {
                 this.setToken('')
                 this.setUser(null)
                 if (window.location.pathname !== '/login.html' && !window.location.pathname.includes('login')) {
-                    window.location.href = '/login.html'
+                    window.location.href = '/view/html/login.html'
                 }
                 throw new Error('Unauthorized')
             }

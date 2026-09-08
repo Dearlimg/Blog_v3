@@ -53,11 +53,12 @@ type JWTConfig struct {
 }
 
 type Config struct {
-	Server   ServerConfig   `yaml:"server"`
-	Database DatabaseConfig `yaml:"database"`
-	Redis    RedisConfig    `yaml:"redis"`
-	Kafka    KafkaConfig    `yaml:"kafka"`
-	JWT      JWTConfig      `yaml:"jwt"`
+	BlogOwnerUserID uint           `yaml:"blog_owner_user_id"`
+	Server          ServerConfig   `yaml:"server"`
+	Database        DatabaseConfig `yaml:"database"`
+	Redis           RedisConfig    `yaml:"redis"`
+	Kafka           KafkaConfig    `yaml:"kafka"`
+	JWT             JWTConfig      `yaml:"jwt"`
 }
 
 func Load(path string) (*Config, error) {
@@ -76,6 +77,14 @@ func Load(path string) (*Config, error) {
 }
 
 func (c *Config) applyEnvOverrides() {
+	if v := os.Getenv("BLOG_OWNER_USER_ID"); v != "" {
+		id, err := strconv.ParseUint(v, 10, 32)
+		if err != nil {
+			c.BlogOwnerUserID = 0
+		} else {
+			c.BlogOwnerUserID = uint(id)
+		}
+	}
 	if v := os.Getenv("SERVER_PORT"); v != "" {
 		c.Server.Port, _ = strconv.Atoi(v)
 	}

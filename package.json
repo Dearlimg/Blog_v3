@@ -1,0 +1,21 @@
+{
+  "name": "blog-article-ui",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:articles": "node scripts/build-articles.mjs",
+    "test:articles": "node scripts/test-articles.mjs"
+  },
+  "dependencies": {
+    "@codemirror/lang-markdown": "^6.3.3",
+    "codemirror": "^6.0.2",
+    "dompurify": "^3.2.7",
+    "highlight.js": "^11.11.1",
+    "lucide": "^0.468.0",
+    "marked": "^15.0.12"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0",
+    "playwright": "^1.55.0"
+  }
+}
