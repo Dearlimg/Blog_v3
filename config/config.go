@@ -2,8 +2,10 @@ package config
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"strconv"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -54,6 +56,7 @@ type JWTConfig struct {
 
 type Config struct {
 	BlogOwnerUserID uint           `yaml:"blog_owner_user_id"`
+	SiteURL         string         `yaml:"site_url"`
 	Server          ServerConfig   `yaml:"server"`
 	Database        DatabaseConfig `yaml:"database"`
 	Redis           RedisConfig    `yaml:"redis"`
@@ -73,7 +76,32 @@ func Load(path string) (*Config, error) {
 	}
 
 	cfg.applyEnvOverrides()
+	siteURL, err := normalizeSiteURL(cfg.SiteURL)
+	if err != nil {
+		return nil, err
+	}
+	cfg.SiteURL = siteURL
 	return cfg, nil
+}
+
+func normalizeSiteURL(value string) (string, error) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return "", nil
+	}
+
+	parsed, err := url.Parse(value)
+	if err != nil {
+		return "", fmt.Errorf("parse site_url: %w", err)
+	}
+	isHTTP := parsed.Scheme == "http" || parsed.Scheme == "https"
+	hasNoPath := parsed.Path == "" || parsed.Path == "/"
+	hasNoQueryOrFragment := parsed.RawQuery == "" && parsed.Fragment == "" && !parsed.ForceQuery
+	if !parsed.IsAbs() || !isHTTP || parsed.Host == "" || parsed.User != nil || !hasNoPath || !hasNoQueryOrFragment {
+		return "", fmt.Errorf("site_url must be an HTTP(S) origin without credentials, path, query, or fragment")
+	}
+
+	return strings.TrimRight(value, "/"), nil
 }
 
 func (c *Config) applyEnvOverrides() {
@@ -120,6 +148,9 @@ func (c *Config) applyEnvOverrides() {
 	}
 	if v := os.Getenv("JWT_EXPIRE"); v != "" {
 		c.JWT.Expire, _ = strconv.Atoi(v)
+	}
+	if v := os.Getenv("SITE_URL"); strings.TrimSpace(v) != "" {
+		c.SiteURL = v
 	}
 }
 

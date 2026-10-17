@@ -3,6 +3,7 @@ package main
 
 import (
 	"flag"
+	"html/template"
 	"log"
 	"net"
 	"os"
@@ -63,11 +64,29 @@ func main() {
 	r.Use(gin.Recovery())
 	r.Static("/static", "./static")
 	r.Static("/view", "./view")
-	r.GET("/", func(c *gin.Context) { c.File("./index.html") })
+	homeTemplate, err := template.ParseFiles("./index.html")
+	if err != nil {
+		log.Fatal(err)
+	}
+	homePage := func(c *gin.Context) {
+		scheme := "http"
+		if c.Request.TLS != nil {
+			scheme = "https"
+		}
+		baseURL := scheme + "://" + c.Request.Host
+		if err := homeTemplate.ExecuteTemplate(c.Writer, "index.html", struct {
+			CanonicalURL string
+			ImageURL     string
+		}{CanonicalURL: baseURL + "/", ImageURL: baseURL + "/static/Ava.jpg"}); err != nil {
+			log.Printf("render homepage failed: %v", err)
+		}
+	}
+	r.GET("/", homePage)
+	r.GET("/index.html", homePage)
 	secret := "local-preview-" + password
 	h := user.NewHandler(user.NewService(db, secret, 7200))
 	r.POST("/api/v1/users/login", h.Login)
-	article.Register(r, db, secret, 1)
+	article.Register(r, db, secret, 1, "")
 	log.Printf("Local article preview: http://%s (owner@example.test)", *addr)
 	log.Fatal(r.Run(*addr))
 }

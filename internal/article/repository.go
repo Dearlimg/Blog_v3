@@ -3,6 +3,7 @@ package article
 import (
 	"encoding/json"
 	"strings"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -17,6 +18,11 @@ type Filter struct {
 	Tag      string
 	Keyword  string
 	State    string
+}
+
+type SitemapEntry struct {
+	ID          string
+	PublishedAt *time.Time
 }
 
 func literalLike(value string) string {
@@ -54,6 +60,17 @@ func (r *Repository) PublicGet(id string) (*PublicDocument, error) {
 		Select("a.id, r.title, r.summary, r.body, r.category, r.tags, a.published_at").
 		Where("a.id = ? AND a.trashed = ?", id, false).Take(&item).Error
 	return &item, err
+}
+
+func (r *Repository) PublicSitemapEntries() ([]SitemapEntry, error) {
+	entries := []SitemapEntry{}
+	err := r.db.Table("articles AS a").
+		Joins("JOIN article_revisions AS r ON r.id = a.published_revision_id").
+		Select("a.id, a.published_at").
+		Where("a.trashed = ? AND a.published_revision_id <> ?", false, 0).
+		Order("a.published_at DESC, a.id").
+		Find(&entries).Error
+	return entries, err
 }
 
 func document(db *gorm.DB, id string) (*Document, error) {

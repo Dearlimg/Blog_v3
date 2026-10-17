@@ -17,6 +17,7 @@
 #   DB_NAME           数据库名 (默认 blog_front)
 #   REDIS_ADDR        Redis 地址 (默认 redis:6379)
 #   JWT_EXPIRE        JWT 过期秒数 (默认 7200)
+#   SITE_URL          站点公网根地址 (例如 https://example.com，用于 canonical 与 sitemap)
 #   SERVER_PORT       服务端口 (默认 8080)
 
 # --- 服务器初始化 (仅首次) ---

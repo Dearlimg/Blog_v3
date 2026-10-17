@@ -3,7 +3,21 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>文章 | Durlim</title>
+    <meta name="description" content="{{.Description}}" />
+    <link rel="canonical" href="{{.CanonicalURL}}" />
+    <title>{{.Title}}</title>
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Durlim" />
+    <meta property="og:locale" content="zh_CN" />
+    <meta property="og:url" content="{{.CanonicalURL}}" />
+    <meta property="og:title" content="{{.Title}}" />
+    <meta property="og:description" content="{{.Description}}" />
+    <meta property="og:image" content="{{.ImageURL}}" />
+    <meta property="og:image:alt" content="Durlim 个人博客头像" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="{{.Title}}" />
+    <meta name="twitter:description" content="{{.Description}}" />
+    <meta name="twitter:image" content="{{.ImageURL}}" />
     <link rel="stylesheet" href="/view/css/articles.css" />
   </head>
   <body>

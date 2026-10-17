@@ -3,16 +3,21 @@ package article
 import (
 	"bytes"
 	"crypto/rand"
+	"encoding/xml"
 	"errors"
 	"fmt"
+	"html/template"
 	"image"
 	_ "image/gif" // Register the image formats accepted by uploads.
 	_ "image/jpeg"
 	_ "image/png"
 	"io"
+	"log/slog"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"blog-front/internal/user"
 	"blog-front/pkg/middleware"
@@ -22,14 +27,49 @@ import (
 	"gorm.io/gorm"
 )
 
-type Handler struct{ svc *Service }
+type Handler struct {
+	svc     *Service
+	siteURL string
+}
 
-func Register(r *gin.Engine, db *gorm.DB, secret string, owner uint) {
-	h := &Handler{svc: NewService(db)}
-	r.GET("/articles", func(c *gin.Context) { c.File("./view/html/articles.html") })
-	r.GET("/articles/:id", func(c *gin.Context) { c.File("./view/html/article.html") })
+type articlePage struct {
+	Title        string
+	Description  string
+	CanonicalURL string
+	ImageURL     string
+	PublishedAt  string
+	NoIndex      bool
+}
+
+type sitemapLocation struct {
+	Location     string `xml:"loc"`
+	LastModified string `xml:"lastmod,omitempty"`
+}
+
+type sitemapDocument struct {
+	XMLName xml.Name          `xml:"urlset"`
+	XMLNS   string            `xml:"xmlns,attr"`
+	URLs    []sitemapLocation `xml:"url"`
+}
+
+func Register(
+	r *gin.Engine,
+	db *gorm.DB,
+	secret string,
+	owner uint,
+	siteURLs ...string,
+) {
+	siteURL := ""
+	if len(siteURLs) > 0 {
+		siteURL = siteURLs[0]
+	}
+	h := &Handler{svc: NewService(db), siteURL: siteURL}
+	r.GET("/articles", h.ArticleListPage)
+	r.GET("/articles/:id", h.PublicPage)
 	r.GET("/studio/articles", func(c *gin.Context) { c.File("./view/html/studio.html") })
 	r.GET("/studio/articles/:id/edit", func(c *gin.Context) { c.File("./view/html/editor.html") })
+	r.GET("/sitemap.xml", h.Sitemap)
+	r.GET("/robots.txt", h.Robots)
 	api := r.Group("/api/v1/articles")
 	api.GET("", h.PublicList)
 	api.GET("/:id", h.PublicGet)
@@ -108,6 +148,162 @@ func (h *Handler) PublicGet(c *gin.Context) {
 	}
 	response.Success(c, d)
 }
+func (h *Handler) PublicPage(c *gin.Context) {
+	document, err := h.svc.repo.PublicGet(c.Param("id"))
+	if err != nil {
+		status := http.StatusInternalServerError
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			status = http.StatusNotFound
+		}
+		metadata := h.pageMetadata(c, nil)
+		metadata.NoIndex = true
+		h.renderPublicPage(c, metadata, status)
+		return
+	}
+
+	h.renderPublicPage(c, h.pageMetadata(c, document), http.StatusOK)
+}
+
+func (h *Handler) ArticleListPage(c *gin.Context) {
+	baseURL := h.baseURL(c)
+	metadata := articlePage{
+		Title:        "文章 | Durlim",
+		Description:  "Durlim 的个人博客文章与记录。",
+		CanonicalURL: baseURL + "/articles",
+		ImageURL:     baseURL + "/static/Ava.jpg",
+	}
+	h.renderPublicPageFile(c, "./view/html/articles.html", metadata, http.StatusOK)
+}
+
+func (h *Handler) Sitemap(c *gin.Context) {
+	entries, err := h.svc.repo.PublicSitemapEntries()
+	if err != nil {
+		slog.Error("generate sitemap failed", "error", err)
+		c.String(http.StatusInternalServerError, "sitemap unavailable")
+		return
+	}
+
+	baseURL := h.baseURL(c)
+	locations := []sitemapLocation{
+		{Location: baseURL + "/"},
+		{Location: baseURL + "/articles"},
+	}
+	for _, entry := range entries {
+		location := sitemapLocation{
+			Location: baseURL + "/articles/" + url.PathEscape(entry.ID),
+		}
+		if entry.PublishedAt != nil {
+			location.LastModified = entry.PublishedAt.UTC().Format(time.RFC3339)
+		}
+		locations = append(locations, location)
+	}
+
+	document := sitemapDocument{
+		XMLNS: "http://www.sitemaps.org/schemas/sitemap/0.9",
+		URLs:  locations,
+	}
+	body, err := xml.MarshalIndent(document, "", "  ")
+	if err != nil {
+		slog.Error("encode sitemap failed", "error", err)
+		c.String(http.StatusInternalServerError, "sitemap unavailable")
+		return
+	}
+
+	c.Header("Cache-Control", "public, max-age=300")
+	c.Data(
+		http.StatusOK,
+		"application/xml; charset=utf-8",
+		append([]byte(xml.Header), body...),
+	)
+}
+
+func (h *Handler) Robots(c *gin.Context) {
+	baseURL := h.baseURL(c)
+	content := fmt.Sprintf(
+		"User-agent: *%cAllow: /%cDisallow: /studio/%cSitemap: %s/sitemap.xml%c",
+		10,
+		10,
+		10,
+		baseURL,
+		10,
+	)
+	c.Data(http.StatusOK, "text/plain; charset=utf-8", []byte(content))
+}
+
+func (h *Handler) baseURL(c *gin.Context) string {
+	if h.siteURL != "" {
+		return strings.TrimRight(h.siteURL, "/")
+	}
+
+	scheme := "http"
+	if c.Request.TLS != nil {
+		scheme = "https"
+	}
+	return scheme + "://" + c.Request.Host
+}
+
+func (h *Handler) pageMetadata(c *gin.Context, document *PublicDocument) articlePage {
+	baseURL := h.baseURL(c)
+	page := articlePage{
+		Title:        "文章不可用 | Durlim",
+		Description:  "Durlim 的个人博客文章。",
+		CanonicalURL: baseURL + "/articles/" + url.PathEscape(c.Param("id")),
+		ImageURL:     baseURL + "/static/Ava.jpg",
+	}
+	if document == nil {
+		return page
+	}
+
+	title := strings.TrimSpace(document.Title)
+	if title == "" {
+		title = "文章"
+	}
+	description := strings.TrimSpace(document.Summary)
+	if description == "" {
+		description = title
+	}
+	page.Title = title + " | Durlim"
+	page.Description = truncateDescription(description)
+	if document.PublishedAt != nil {
+		page.PublishedAt = document.PublishedAt.UTC().Format(time.RFC3339)
+	}
+	return page
+}
+
+func (h *Handler) renderPublicPage(c *gin.Context, metadata articlePage, status int) {
+	h.renderPublicPageFile(c, "./view/html/article.html", metadata, status)
+}
+
+func (h *Handler) renderPublicPageFile(c *gin.Context, path string, metadata articlePage, status int) {
+	page, err := template.ParseFiles(path)
+	if err != nil {
+		slog.Error("load public page template failed", "error", err)
+		c.String(http.StatusInternalServerError, "page unavailable")
+		return
+	}
+
+	c.Header("Content-Type", "text/html; charset=utf-8")
+	c.Header("X-Content-Type-Options", "nosniff")
+	if status == http.StatusOK {
+		c.Header("Cache-Control", "public, max-age=300")
+	} else {
+		c.Header("Cache-Control", "no-store")
+	}
+	c.Status(status)
+	if err := page.ExecuteTemplate(c.Writer, strings.TrimPrefix(path, "./view/html/"), metadata); err != nil {
+		slog.Error("render public page failed", "error", err)
+	}
+}
+
+func truncateDescription(value string) string {
+	value = strings.Join(strings.Fields(value), " ")
+	runes := []rune(value)
+	if len(runes) <= 160 {
+		return value
+	}
+	return string(runes[:157]) + "..."
+}
+
 func (h *Handler) List(c *gin.Context) {
 	f := filter(c)
 	items, total, err := h.svc.repo.List(c.GetUint("user_id"), f)

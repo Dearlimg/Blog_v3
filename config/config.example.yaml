@@ -1,5 +1,6 @@
 # Set to the existing account ID that owns the blog. Zero disables article writing.
 blog_owner_user_id: 0
+site_url: "" # Canonical public origin, for example https://example.com
 
 server:
   port: 8080

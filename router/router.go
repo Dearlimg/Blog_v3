@@ -1,6 +1,10 @@
 package router
 
 import (
+	"html/template"
+	"net/http"
+	"strings"
+
 	"blog-front/config"
 	"blog-front/internal/agent"
 	"blog-front/internal/article"
@@ -19,6 +23,23 @@ import (
 	"gorm.io/gorm"
 )
 
+type homepageMetadata struct {
+	CanonicalURL string
+	ImageURL     string
+}
+
+func homepageBaseURL(siteURL string, request *http.Request) string {
+	if siteURL != "" {
+		return strings.TrimRight(siteURL, "/")
+	}
+
+	scheme := "http"
+	if request.TLS != nil {
+		scheme = "https"
+	}
+	return scheme + "://" + request.Host
+}
+
 func Setup(cfg *config.Config, db *gorm.DB, rdb *redis.Client) *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
 
@@ -33,10 +54,28 @@ func Setup(cfg *config.Config, db *gorm.DB, rdb *redis.Client) *gin.Engine {
 
 	r.Static("/static", "./static")
 	r.Static("/view", "./view")
-	r.StaticFile("/index.html", "./index.html")
+	homeTemplate, err := template.ParseFiles("./index.html")
+	if err != nil {
+		slog.Error("load homepage template failed", "error", err)
+	}
+	homePage := func(c *gin.Context) {
+		if homeTemplate == nil {
+			c.String(http.StatusInternalServerError, "homepage unavailable")
+			return
+		}
+		baseURL := homepageBaseURL(cfg.SiteURL, c.Request)
+		c.Header("Content-Type", "text/html; charset=utf-8")
+		if err := homeTemplate.ExecuteTemplate(c.Writer, "index.html", homepageMetadata{
+			CanonicalURL: baseURL + "/",
+			ImageURL:     baseURL + "/static/Ava.jpg",
+		}); err != nil {
+			slog.Error("render homepage failed", "error", err)
+		}
+	}
+	r.GET("/index.html", homePage)
 	r.GET("/agent", func(c *gin.Context) { c.File("./view/html/agent.html") })
-	r.GET("/", func(c *gin.Context) { c.File("./index.html") })
-	article.Register(r, db, cfg.JWT.SecretKey, cfg.BlogOwnerUserID)
+	r.GET("/", homePage)
+	article.Register(r, db, cfg.JWT.SecretKey, cfg.BlogOwnerUserID, cfg.SiteURL)
 
 	if err := agent.RegisterFromEnv(r); err != nil {
 		slog.Error("agent initialization failed; agent endpoints disabled")
