@@ -2,8 +2,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const form = document.getElementById('messageForm');
   const list = document.getElementById('messagesList');
   const refresh = document.getElementById('refreshMessages');
+  const loadMore = document.getElementById('loadMoreMessages');
   const submit = form.querySelector('.submit-btn');
+  const pageSize = 20;
   let loading = false;
+  let currentPage = 1;
 
   function element(tag, className, text) {
     const node = document.createElement(tag);
@@ -29,28 +32,46 @@ document.addEventListener('DOMContentLoaded', () => {
     return item;
   }
 
-  async function loadMessages() {
+  async function loadMessages(append = false) {
     if (loading) return;
     loading = true;
     refresh.disabled = true;
+    loadMore.disabled = true;
     list.setAttribute('aria-busy', 'true');
-    list.replaceChildren(element('div', 'message-loading', 'Loading messages...'));
+    const requestedPage = append ? currentPage + 1 : 1;
+    if (append) {
+      loadMore.textContent = 'Loading...';
+    } else {
+      loadMore.hidden = true;
+      list.replaceChildren(element('div', 'message-loading', 'Loading messages...'));
+    }
     try {
-      const response = await API.get('/messages');
-      if (!Array.isArray(response.data)) throw new Error('Invalid message response');
-      list.replaceChildren(...response.data.map(createMessage));
-      if (!response.data.length) list.append(element('div', 'no-messages', 'A quiet corner for a conversation. Leave the first note.'));
+      const response = await API.get(`/messages?page=${requestedPage}&page_size=${pageSize}`);
+      if (!Array.isArray(response.data) || typeof response.total !== 'number') throw new Error('Invalid message response');
+      const messages = response.data.map(createMessage);
+      if (append) {
+        list.querySelectorAll('.message-error').forEach(error => error.remove());
+        list.append(...messages);
+      } else {
+        list.replaceChildren(...messages);
+      }
+      currentPage = requestedPage;
+      loadMore.hidden = currentPage * response.page_size >= response.total;
+      if (!append && !messages.length) list.append(element('div', 'no-messages', 'A quiet corner for a conversation. Leave the first note.'));
     } catch {
-      const error = element('div', 'message-error', 'Messages are unavailable right now.');
+      const errorNotice = element('div', 'message-error', 'Messages are unavailable right now.');
       const retry = element('button', 'retry-messages', 'Try again');
       retry.id = 'retry-messages';
       retry.type = 'button';
-      retry.addEventListener('click', loadMessages);
-      error.append(retry);
-      list.replaceChildren(error);
+      retry.addEventListener('click', () => loadMessages(append));
+      errorNotice.append(retry);
+      if (append) list.append(errorNotice);
+      else list.replaceChildren(errorNotice);
     } finally {
       loading = false;
       refresh.disabled = false;
+      loadMore.disabled = false;
+      loadMore.textContent = 'Load older messages';
       list.setAttribute('aria-busy', 'false');
     }
   }
@@ -62,7 +83,8 @@ document.addEventListener('DOMContentLoaded', () => {
     form.before(notice);
   }
 
-  refresh.addEventListener('click', loadMessages);
+  refresh.addEventListener('click', () => loadMessages(false));
+  loadMore.addEventListener('click', () => loadMessages(true));
   form.addEventListener('submit', async event => {
     event.preventDefault();
     if (submit.disabled) return;
@@ -85,8 +107,13 @@ document.addEventListener('DOMContentLoaded', () => {
       form.reset();
       notify('Thank you. Your message has been sent.', 'success');
       await loadMessages();
-    } catch {
-      notify('Your message could not be sent. Please try again.', 'error');
+    } catch (error) {
+      const message = error.message === 'please wait before submitting another message'
+        ? 'Please wait one minute before posting again.'
+        : error.message === 'message submission is temporarily unavailable'
+          ? 'Message submission is temporarily unavailable. Please try again shortly.'
+          : 'Your message could not be sent. Please check the fields and try again.';
+      notify(message, 'error');
     } finally {
       submit.innerHTML = original;
       submit.disabled = false;

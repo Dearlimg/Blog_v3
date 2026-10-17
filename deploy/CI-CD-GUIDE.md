@@ -18,6 +18,7 @@
 #   REDIS_ADDR        Redis 地址 (默认 redis:6379)
 #   JWT_EXPIRE        JWT 过期秒数 (默认 7200)
 #   SITE_URL          站点公网根地址 (例如 https://example.com，用于 canonical 与 sitemap)
+#   TRUSTED_PROXIES   反向代理的准确 IP/CIDR 列表，逗号分隔；直连时留空
 #   SERVER_PORT       服务端口 (默认 8080)
 
 # --- 服务器初始化 (仅首次) ---

@@ -15,16 +15,16 @@
   <div class="message-form-container">
     <form id="messageForm" class="message-form">
       <div class="form-group">
-        <label for="name">Name</label>
-        <input type="text" id="name" name="name" required placeholder="Your name">
+        <label for="name">Name (optional)</label>
+        <input type="text" id="name" name="name" maxlength="100" placeholder="Your name">
       </div>
       <div class="form-group">
         <label for="email">Email (optional)</label>
-        <input type="email" id="email" name="email" placeholder="Your email">
+        <input type="email" id="email" name="email" maxlength="200" placeholder="Your email">
       </div>
       <div class="form-group">
         <label for="message">Message</label>
-        <textarea id="message" name="message" required placeholder="Write your message here..."></textarea>
+        <textarea id="message" name="message" required maxlength="2000" placeholder="Write your message here..."></textarea>
       </div>
       <button type="submit" class="submit-btn">
         <i class="fas fa-paper-plane"></i> Send Message
@@ -38,6 +38,7 @@
       <!-- Messages will be loaded here -->
       <div class="message-loading">Loading messages...</div>
     </div>
+    <button class="load-more-messages" id="loadMoreMessages" type="button" hidden>Load older messages</button>
   </div>
 </div>
 

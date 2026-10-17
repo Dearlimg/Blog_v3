@@ -23,7 +23,9 @@ type Service struct{ repo *Repository }
 
 func NewService(db *gorm.DB) *Service { return &Service{repo: NewRepository(db)} }
 
-func (s *Service) List() ([]Entity, error) { return s.repo.List() }
+func (s *Service) List(page, pageSize int) ([]Entity, int64, error) {
+	return s.repo.List(page, pageSize)
+}
 
 func (s *Service) Create(req *CreateReq, ip string) (*Entity, error) {
 	name := req.Name

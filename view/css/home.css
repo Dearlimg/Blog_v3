@@ -134,6 +134,9 @@ main { display: flex; flex-direction: column; }
 .messages-heading h3 { font-size: 14px; font-weight: 600; }
 .messages-heading .icon-button { border: 0; height: 32px; }
 .messages-list { max-height: 370px; overflow: auto; scrollbar-width: thin; padding-right: 8px; }
+.load-more-messages { display: block; margin: 14px auto 0; border: 1px solid var(--line); border-radius: 4px; padding: 8px 12px; background: transparent; color: var(--ink); font-size: 11px; }
+.load-more-messages[hidden] { display: none; }
+.load-more-messages:disabled { opacity: .6; cursor: wait; }
 .message-item { border-bottom: 1px solid var(--line); padding-block: 17px; }
 .message-header { display: flex; justify-content: space-between; align-items: baseline; gap: 14px; }
 .message-author { font-size: 12px; font-weight: 600; overflow-wrap: anywhere; }

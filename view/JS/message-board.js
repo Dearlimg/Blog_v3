@@ -1,8 +1,13 @@
 document.addEventListener("DOMContentLoaded", () => {
     const messageForm = document.getElementById("messageForm")
     const messagesList = document.getElementById("messagesList")
+    const loadMoreButton = document.getElementById("loadMoreMessages")
+    const pageSize = 20
+    let currentPage = 1
+    let loading = false
 
     loadMessages()
+    loadMoreButton.addEventListener("click", () => loadMessages(true))
 
     messageForm.addEventListener("submit", (e) => {
         e.preventDefault()
@@ -25,8 +30,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 messageForm.reset()
                 loadMessages()
             })
-            .catch(() => {
-                showNotification("Failed to send message. Please try again.", "error")
+            .catch((error) => {
+                const message = error.message === "please wait before submitting another message"
+                    ? "Please wait one minute before posting again."
+                    : error.message === "message submission is temporarily unavailable"
+                        ? "Message submission is temporarily unavailable. Please try again shortly."
+                        : "Failed to send message. Please check the fields and try again."
+                showNotification(message, "error")
             })
             .finally(() => {
                 submitBtn.innerHTML = originalBtnText
@@ -45,23 +55,52 @@ document.addEventListener("DOMContentLoaded", () => {
         setTimeout(() => notification.remove(), 5000)
     }
 
-    function loadMessages() {
-        messagesList.innerHTML = '<div class="message-loading">Loading messages...</div>'
+    async function loadMessages(append = false) {
+        if (loading) return
+        loading = true
+        loadMoreButton.disabled = true
+        const requestedPage = append ? currentPage + 1 : 1
+        if (append) {
+            loadMoreButton.textContent = "Loading..."
+        } else {
+            loadMoreButton.hidden = true
+            messagesList.innerHTML = '<div class="message-loading">Loading messages...</div>'
+        }
 
-        fetchMessages()
-            .then((messages) => {
-                if (!messages || messages.length === 0) {
-                    messagesList.innerHTML = '<div class="no-messages">No messages yet. Be the first to leave a message!</div>'
-                    return
-                }
-                messagesList.innerHTML = ""
-                messages.forEach((msg) => {
-                    messagesList.appendChild(createMessageElement(msg))
-                })
-            })
-            .catch(() => {
-                messagesList.innerHTML = '<div class="message-error">Failed to load messages. Please refresh the page.</div>'
-            })
+        try {
+            const result = await fetchMessages(requestedPage)
+            const messages = result.messages.map(createMessageElement)
+            if (append) {
+                messagesList.querySelectorAll(".message-error").forEach((error) => error.remove())
+                messages.forEach((message) => messagesList.appendChild(message))
+            } else {
+                messagesList.replaceChildren(...messages)
+            }
+            currentPage = requestedPage
+            loadMoreButton.hidden = currentPage * result.pageSize >= result.total
+            if (!append && !messages.length) {
+                messagesList.innerHTML = '<div class="no-messages">No messages yet. Be the first to leave a message!</div>'
+            }
+        } catch {
+            const error = document.createElement("div")
+            error.className = "message-error"
+            error.textContent = "Failed to load messages. Please try again."
+            if (append) {
+                const retry = document.createElement("button")
+                retry.className = "retry-messages"
+                retry.type = "button"
+                retry.textContent = "Try again"
+                retry.addEventListener("click", () => loadMessages(true))
+                error.appendChild(retry)
+                messagesList.appendChild(error)
+            } else {
+                messagesList.replaceChildren(error)
+            }
+        } finally {
+            loading = false
+            loadMoreButton.disabled = false
+            loadMoreButton.textContent = "Load older messages"
+        }
     }
 
     function createMessageElement(message) {
@@ -112,18 +151,24 @@ document.addEventListener("DOMContentLoaded", () => {
             .replace(/'/g, "&#039;")
     }
 
-    function fetchMessages() {
-        return API.get("/messages")
+    function fetchMessages(page) {
+        return API.get(`/messages?page=${page}&page_size=${pageSize}`)
             .then((resp) => {
-                if (!resp.data || !Array.isArray(resp.data)) return []
-                return resp.data.map((item) => ({
-                    id: item.id,
-                    name: item.name || "Anonymous",
-                    email: item.email || "",
-                    content: item.content || "",
-                    ip: item.ip || "",
-                    date: item.create_at || null,
-                }))
+                if (!Array.isArray(resp.data) || typeof resp.total !== "number") {
+                    throw new Error("Invalid message response")
+                }
+                return {
+                    messages: resp.data.map((item) => ({
+                        id: item.id,
+                        name: item.name || "Anonymous",
+                        email: item.email || "",
+                        content: item.content || "",
+                        ip: item.ip || "",
+                        date: item.create_at || null,
+                    })),
+                    total: resp.total,
+                    pageSize: resp.page_size,
+                }
             })
             .catch((err) => {
                 console.error("Fetch error:", err)

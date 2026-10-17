@@ -21,7 +21,7 @@
   <meta name="twitter:image" content="{{.ImageURL}}">
   <meta name="theme-color" content="#f8faf9">
   <link rel="icon" href="/static/Ava.jpg">
-  <link rel="stylesheet" href="/view/css/home.css?v=20260907">
+  <link rel="stylesheet" href="/view/css/home.css?v=20261017">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body class="home-page" id="top">
@@ -254,7 +254,7 @@
         </div>
         <div class="form-group">
           <label for="email">Email <span>optional</span></label>
-          <input type="email" id="email" name="email" autocomplete="email" maxlength="100" placeholder="you@example.com">
+          <input type="email" id="email" name="email" autocomplete="email" maxlength="200" placeholder="you@example.com">
         </div>
         <div class="form-group">
           <label for="message">Message</label>
@@ -272,6 +272,7 @@
         <!-- Messages will be loaded here -->
         <div class="message-loading">Loading messages...</div>
       </div>
+      <button class="load-more-messages" id="loadMoreMessages" type="button" hidden>Load older messages</button>
     </div>
     </div>
   </section>
@@ -306,7 +307,7 @@
 
 <script src="/view/JS/api-config.js?v=20260823"></script>
 <script src="/view/JS/home.js?v=20260907"></script>
-<script src="/view/JS/home-messages.js?v=20260907"></script>
+<script src="/view/JS/home-messages.js?v=20261017"></script>
 <script src="/view/JS/stat.js?v=20260823"></script>
 <script type="module" src="/static/article-build/home.js"></script>
 </body>

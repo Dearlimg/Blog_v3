@@ -138,6 +138,7 @@ jobs:
             export JWT_SECRET="${{ secrets.JWT_SECRET }}"
             export JWT_EXPIRE="${{ vars.JWT_EXPIRE || '7200' }}"
             export SITE_URL="${{ vars.SITE_URL || '' }}"
+            export TRUSTED_PROXIES="${{ vars.TRUSTED_PROXIES || '' }}"
 
             docker compose -p blog-front up -d
 

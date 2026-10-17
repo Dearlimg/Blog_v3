@@ -2,6 +2,7 @@ package router
 
 import (
 	"html/template"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -16,7 +17,6 @@ import (
 	"blog-front/internal/user"
 	"blog-front/internal/wallet"
 	"blog-front/pkg/middleware"
-	"log/slog"
 
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
@@ -48,6 +48,14 @@ func Setup(cfg *config.Config, db *gorm.DB, rdb *redis.Client) *gin.Engine {
 	statH := stat.NewHandler(statSvc)
 
 	r := gin.New()
+	trustedProxies := cfg.TrustedProxies
+	if len(trustedProxies) == 0 {
+		trustedProxies = nil
+	}
+	if err := r.SetTrustedProxies(trustedProxies); err != nil {
+		slog.Error("configure trusted proxies failed; forwarding headers will be ignored", "error", err)
+		_ = r.SetTrustedProxies(nil)
+	}
 	r.Use(gin.Recovery())
 	r.Use(middleware.Logger())
 	r.Use(stat.Middleware(statSvc))
@@ -90,7 +98,7 @@ func Setup(cfg *config.Config, db *gorm.DB, rdb *redis.Client) *gin.Engine {
 
 	userH := user.NewHandler(userSvc)
 	commentH := comment.NewHandler(commentSvc)
-	messageH := message.NewHandler(messageSvc)
+	messageH := message.NewHandler(messageSvc, message.NewCreateRateLimiter(rdb))
 	productH := product.NewHandler(productSvc)
 	orderH := order.NewHandler(orderSvc)
 	walletH := wallet.NewHandler(walletSvc)

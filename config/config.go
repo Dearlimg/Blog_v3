@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"net"
 	"net/url"
 	"os"
 	"strconv"
@@ -57,6 +58,7 @@ type JWTConfig struct {
 type Config struct {
 	BlogOwnerUserID uint           `yaml:"blog_owner_user_id"`
 	SiteURL         string         `yaml:"site_url"`
+	TrustedProxies  []string       `yaml:"trusted_proxies"`
 	Server          ServerConfig   `yaml:"server"`
 	Database        DatabaseConfig `yaml:"database"`
 	Redis           RedisConfig    `yaml:"redis"`
@@ -81,6 +83,11 @@ func Load(path string) (*Config, error) {
 		return nil, err
 	}
 	cfg.SiteURL = siteURL
+	trustedProxies, err := normalizeTrustedProxies(cfg.TrustedProxies)
+	if err != nil {
+		return nil, err
+	}
+	cfg.TrustedProxies = trustedProxies
 	return cfg, nil
 }
 
@@ -102,6 +109,23 @@ func normalizeSiteURL(value string) (string, error) {
 	}
 
 	return strings.TrimRight(value, "/"), nil
+}
+
+func normalizeTrustedProxies(values []string) ([]string, error) {
+	proxies := make([]string, 0, len(values))
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value == "" {
+			continue
+		}
+		if net.ParseIP(value) == nil {
+			if _, _, err := net.ParseCIDR(value); err != nil {
+				return nil, fmt.Errorf("trusted_proxies entry %q must be an IP address or CIDR", value)
+			}
+		}
+		proxies = append(proxies, value)
+	}
+	return proxies, nil
 }
 
 func (c *Config) applyEnvOverrides() {
@@ -151,6 +175,9 @@ func (c *Config) applyEnvOverrides() {
 	}
 	if v := os.Getenv("SITE_URL"); strings.TrimSpace(v) != "" {
 		c.SiteURL = v
+	}
+	if v := os.Getenv("TRUSTED_PROXIES"); strings.TrimSpace(v) != "" {
+		c.TrustedProxies = strings.Split(v, ",")
 	}
 }
 
