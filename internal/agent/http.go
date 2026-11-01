@@ -57,6 +57,7 @@ func (s *Service) Register(r *gin.Engine) {
 	api.GET("/sessions/:id", s.sessionState)
 	api.POST("/sessions/:id/messages", s.chat)
 	api.GET("/runs/:id", s.runState)
+	api.GET("/runs/:id/events", s.runEvents)
 	api.POST("/runs/:id/cancel", func(c *gin.Context) {
 		if err := s.Cancel(c.GetString("agent_principal"), c.Param("id")); err != nil {
 			agentError(c, 404, err)
@@ -183,7 +184,19 @@ func (s *Service) sessionState(c *gin.Context) {
 	if strings.HasPrefix(activeRun, "approval:") {
 		activeRun = ""
 	}
-	c.JSON(200, gin.H{"id": session.ID, "messages": messages, "active_run": activeRun, "approvals": pending, "todos": todos.Items})
+	runs, _ := indexedRecords[Run](s.store, "runs", "session_id", session.ID)
+	history := []Run{}
+	for _, run := range runs {
+		if run.Principal == session.Principal && run.Status != "running" {
+			run.Principal = ""
+			history = append(history, run)
+		}
+	}
+	sort.Slice(history, func(i, j int) bool { return history[i].CreatedAt.Before(history[j].CreatedAt) })
+	c.JSON(200, gin.H{
+		"id": session.ID, "messages": messages, "runs": history, "active_run": activeRun,
+		"approvals": pending, "todos": todos.Items,
+	})
 }
 
 func (s *Service) runState(c *gin.Context) {

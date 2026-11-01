@@ -55,10 +55,23 @@ type Model interface {
 	Complete(context.Context, []Message, []ToolDefinition) (Completion, error)
 }
 
+// StreamingModel emits public assistant text, never private model reasoning.
+type StreamingModel interface {
+	StreamComplete(context.Context, []Message, []ToolDefinition, func(string)) (Completion, error)
+}
+
 type Event struct {
-	Type string    `json:"type"`
-	Text string    `json:"text"`
-	At   time.Time `json:"at"`
+	Type       string    `json:"type"`
+	Text       string    `json:"text"`
+	At         time.Time `json:"at"`
+	Agent      string    `json:"agent,omitempty"`
+	Tool       string    `json:"tool,omitempty"`
+	CallID     string    `json:"call_id,omitempty"`
+	MessageID  string    `json:"message_id,omitempty"`
+	Arguments  string    `json:"arguments,omitempty"`
+	Result     string    `json:"result,omitempty"`
+	Status     string    `json:"status,omitempty"`
+	DurationMS int64     `json:"duration_ms,omitempty"`
 }
 
 type Session struct {

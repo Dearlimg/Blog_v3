@@ -3,6 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build:agent": "node scripts/build-agent.mjs",
+    "test:agent": "npm run build:agent && node --test tests/agent-browser.test.mjs tests/agent-stream.test.mjs",
     "build:articles": "node scripts/build-articles.mjs",
     "test:articles": "node scripts/test-articles.mjs"
   },

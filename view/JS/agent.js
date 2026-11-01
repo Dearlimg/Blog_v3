@@ -1,6 +1,11 @@
+import { marked } from 'marked';
+import DOMPurify from 'dompurify';
+import hljs from 'highlight.js/lib/common';
+import 'highlight.js/styles/github.css';
+
 (() => {
   const $ = id => document.getElementById(id);
-  const state = { session: '', run: '', owner: '', epoch: 0, sessions: [], seen: new Set(), pollTimer: null };
+  const state = { session: '', run: '', owner: '', epoch: 0, sessions: [], views: new Map(), pollTimer: null, stream: null, follow: true };
   try { state.sessions = JSON.parse(localStorage.getItem('durlim-agent-sessions') || '[]').slice(0, 20); } catch {}
   const welcome = $('welcome').cloneNode(true);
 
@@ -19,33 +24,57 @@
 
   function status(text, error = false) { $('run-status').textContent = text; $('run-status').classList.toggle('error', error); }
   function safeURL(raw) { try { const u = new URL(raw); return ['http:', 'https:'].includes(u.protocol) ? u.href : null; } catch { return null; } }
-  function renderText(parent, text) {
-    const pattern = /\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)/g;
-    let offset = 0;
-    for (const match of text.matchAll(pattern)) {
-      parent.append(document.createTextNode(text.slice(offset, match.index)));
-      const href = safeURL(match[2]);
-      if (href) { const a = document.createElement('a'); a.textContent = match[1]; a.href = href; a.target = '_blank'; a.rel = 'noopener noreferrer'; parent.append(a); }
-      else parent.append(document.createTextNode(match[0]));
-      offset = match.index + match[0].length;
-    }
-    parent.append(document.createTextNode(text.slice(offset)));
+  function followOutput() {
+    if (state.follow) $('conversation').scrollTop = $('conversation').scrollHeight;
   }
-  function message(role, text, sources = []) {
+  function renderText(parent, text, final = true) {
+    parent.innerHTML = DOMPurify.sanitize(marked.parse(text || '', { gfm: true, breaks: false }), {
+      ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'del', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'blockquote', 'pre', 'code', 'a', 'hr', 'table', 'thead', 'tbody', 'tr', 'th', 'td'],
+      ALLOWED_ATTR: ['href', 'title', 'class', 'start', 'align'],
+    });
+    parent.querySelectorAll('a').forEach(a => {
+      const href = safeURL(a.getAttribute('href'));
+      if (!href) { a.replaceWith(document.createTextNode(a.textContent)); return; }
+      a.href = href; a.target = '_blank'; a.rel = 'noopener noreferrer';
+    });
+    parent.querySelectorAll('table').forEach(table => {
+      const wrap = document.createElement('div'); wrap.className = 'table-scroll';
+      table.replaceWith(wrap); wrap.append(table);
+    });
+    if (!final) return;
+    parent.querySelectorAll('pre code').forEach(code => {
+      hljs.highlightElement(code);
+      const button = document.createElement('button'); button.type = 'button';
+      button.className = 'copy-code'; button.textContent = '复制代码';
+      button.addEventListener('click', () => copyText(code.textContent, button));
+      code.parentElement.append(button);
+    });
+  }
+  async function copyText(text, button) {
+    try { await navigator.clipboard.writeText(text); button.textContent = '已复制'; }
+    catch { button.textContent = '复制失败，请手动选择'; }
+    setTimeout(() => { if (button.isConnected) button.textContent = button.classList.contains('copy-code') ? '复制代码' : '复制回复'; }, 1800);
+  }
+  function message(role, text, parent = $('conversation')) {
     $('welcome')?.remove();
     const article = document.createElement('article'); article.className = 'message ' + role;
     const speaker = document.createElement('div'); speaker.className = 'speaker'; speaker.textContent = role === 'user' ? '你' : 'Durlim · AI';
-    const body = document.createElement('div'); body.className = 'body'; renderText(body, text);
+    const body = document.createElement('div'); body.className = 'body';
+    if (role === 'user') body.textContent = text; else renderText(body, text);
     article.append(speaker, body);
+    parent.append(article); followOutput();
+    return { article, body, text };
+  }
+  function renderSources(article, sources = []) {
+    article.querySelector('.sources')?.remove();
     const unique = new Map(sources.map(source => [source.url, source]));
     if (unique.size) {
       const list = document.createElement('div'); list.className = 'sources';
       for (const source of unique.values()) { const href = safeURL(source.url); if (!href) continue; const a = document.createElement('a'); a.href = href; a.textContent = source.title; a.target = '_blank'; a.rel = 'noopener noreferrer'; list.append(a); }
       article.append(list);
     }
-    $('conversation').append(article); article.scrollIntoView({ block: 'end' });
   }
-  function busy(value) { $('send').hidden = value; $('cancel').hidden = !value; $('new-chat').disabled = value; $('prompt').disabled = value; }
+  function busy(value) { $('send').hidden = value; $('cancel').hidden = !value; $('cancel').disabled = false; $('new-chat').disabled = value; $('prompt').disabled = value; $('chat-form').setAttribute('aria-busy', String(value)); }
   function listSessions() {
     $('sessions').replaceChildren();
     if (state.owner) return;
@@ -58,14 +87,27 @@
   }
   async function selectSession(id) {
     const epoch = ++state.epoch;
+    resetTransport(); busy(false);
     try {
       const session = await api('/sessions/' + id);
       if (epoch !== state.epoch) return;
-      state.session = id; state.seen.clear(); $('conversation').replaceChildren();
-      session.messages.forEach(m => message(m.role, m.content));
-      if (!session.messages.length) $('conversation').append(welcome.cloneNode(true));
-      renderApprovals(session.approvals); listSessions();
-      if (session.active_run) { state.run = session.active_run; busy(true); poll(state.run, epoch); }
+      resetTransport(); state.session = id; state.views.clear(); state.follow = true; $('conversation').replaceChildren();
+      if (session.runs?.length) {
+        for (const run of session.runs) {
+          message('user', run.prompt);
+          const view = runView(run.id);
+          (run.events || []).forEach(event => applyEvent(view, event));
+          finishView(view, run);
+        }
+      } else session.messages.forEach(m => message(m.role, m.content));
+      if (!$('conversation').children.length && !session.active_run) $('conversation').append(welcome.cloneNode(true));
+      renderApprovals(session.approvals || []); renderTodos(session.todos || []); listSessions(); status('');
+      if (session.active_run) {
+        const run = await api('/runs/' + session.active_run);
+        if (epoch !== state.epoch) return;
+        message('user', run.prompt || '继续上次任务'); state.run = run.id || session.active_run;
+        busy(true); watch(state.run, epoch);
+      }
     } catch (error) { if (epoch === state.epoch) status(error.message, true); }
   }
   function renderApprovals(items) {
@@ -94,22 +136,170 @@
       $('approvals').append(box);
     }
   }
-  async function poll(id, epoch) {
-    if (epoch !== state.epoch) return;
+  const toolLabels = { web_search: '搜索网页', web_read: '读取网页', profile_read: '读取个人资料', skills_list: '查看技能', skills_load: '加载技能', todo_write: '更新计划', memory_search: '检索记忆', memory_write: '保存记忆', note_write: '保存笔记', artifact_read: '读取完整结果', subagent: '委派研究', mcp_call: '调用 MCP 工具', workflow_run: '执行工作流' };
+  const statusLabels = { completed: '已完成', failed: '执行失败', cancelled: '已停止', interrupted: '服务中断', budget_exhausted: '已达运行上限', blocked: '目标未通过验收', approval_required: '等待确认' };
+  const pretty = text => { try { return JSON.stringify(JSON.parse(text), null, 2); } catch { return text || ''; } };
+  function runView(id) {
+    if (state.views.has(id)) return state.views.get(id);
+    $('welcome')?.remove();
+    const section = document.createElement('section'); section.className = 'run-block running';
+    section.setAttribute('aria-label', 'Agent 执行过程');
+    const heading = document.createElement('div'); heading.className = 'run-heading';
+    const label = document.createElement('span'); label.className = 'run-label'; label.textContent = '正在思考与查证…';
+    const meta = document.createElement('span'); meta.className = 'run-meta';
+    heading.append(label, meta);
+    const timeline = document.createElement('div'); timeline.className = 'run-timeline';
+    section.append(heading, timeline); $('conversation').append(section);
+    const view = { section, label, meta, timeline, cursor: 0, tools: new Map(), messages: new Map(), steps: new Map(), lastMessage: null, done: false, renderTimer: null };
+    state.views.set(id, view); followOutput(); return view;
+  }
+  function renderTodos(items) {
+    $('activity').hidden = !items.length;
+    $('todos').replaceChildren(...items.map(todo => {
+      const li = document.createElement('li'); li.dataset.status = todo.status;
+      li.textContent = ({ pending: '○', in_progress: '◉', completed: '✓' }[todo.status] || '○') + ' ' + todo.content;
+      return li;
+    }));
+  }
+  function renderPending(view, final = false) {
+    clearTimeout(view.renderTimer); view.renderTimer = null;
+    for (const item of view.messages.values()) {
+      if (!item.dirty && !final) continue;
+      renderText(item.body, item.text, final); item.dirty = false;
+    }
+    followOutput();
+  }
+  function applyEvent(view, event) {
+    if (event.type === 'model_start') {
+      const row = document.createElement('div'); row.className = 'model-step pending';
+      row.textContent = event.agent && event.agent !== 'lead' ? event.agent + ' · 正在处理' : '正在思考…';
+      view.timeline.append(row); view.steps.set(event.message_id, row); view.label.textContent = row.textContent;
+    } else if (event.type === 'assistant_delta') {
+      let item = view.messages.get(event.message_id);
+      if (!item) { item = message('assistant', '', view.timeline); item.article.classList.add('streaming'); view.messages.set(event.message_id, item); }
+      item.text += event.text; item.dirty = true; view.lastMessage = item;
+      view.label.textContent = '正在生成回复…';
+      if (!view.renderTimer) view.renderTimer = setTimeout(() => renderPending(view), 60);
+    } else if (event.type === 'model_end') {
+      renderPending(view, true);
+      const item = view.messages.get(event.message_id); item?.article.classList.remove('streaming');
+      const step = view.steps.get(event.message_id);
+      if (step) { step.classList.remove('pending'); step.textContent = (event.status === 'failed' ? '生成中断' : '已完成一轮处理') + ' · ' + (event.duration_ms / 1000).toFixed(1) + ' 秒'; }
+    } else if (event.type === 'tool_start') {
+      const details = document.createElement('details'); details.className = 'tool-event pending';
+      const summary = document.createElement('summary');
+      const title = document.createElement('span'); title.className = 'tool-name'; title.textContent = toolLabels[event.tool] || event.tool;
+      const code = document.createElement('code'); code.textContent = event.tool;
+      const badge = document.createElement('span'); badge.className = 'tool-status'; badge.textContent = '执行中';
+      summary.append(title, code, badge); details.append(summary);
+      const input = document.createElement('pre'); input.className = 'tool-input'; input.textContent = pretty(event.arguments);
+      const inputLabel = document.createElement('div'); inputLabel.className = 'tool-detail-label'; inputLabel.textContent = '调用参数' + (event.agent !== 'lead' && event.agent ? ' · ' + event.agent : '');
+      details.append(inputLabel, input); view.timeline.append(details);
+      view.tools.set(event.call_id, { details, badge }); view.label.textContent = title.textContent + '…';
+    } else if (event.type === 'tool_end') {
+      const tool = view.tools.get(event.call_id);
+      if (tool) {
+        tool.details.classList.remove('pending'); tool.details.dataset.status = event.status;
+        tool.badge.textContent = (statusLabels[event.status] || event.status) + ' · ' + (event.duration_ms / 1000).toFixed(1) + ' 秒';
+        const label = document.createElement('div'); label.className = 'tool-detail-label'; label.textContent = '执行结果';
+        const result = document.createElement('pre'); result.className = 'tool-result'; result.textContent = pretty(event.result);
+        tool.details.append(label, result);
+      }
+      if (event.tool === 'todo_write' && event.status === 'completed') { try { renderTodos(JSON.parse(event.result).items || []); } catch {} }
+    } else if (['GoalCheck', 'ContextCompact'].includes(event.type)) {
+      const row = document.createElement('div'); row.className = 'model-step';
+      row.textContent = (event.type === 'GoalCheck' ? '目标验收 · ' : '已整理上下文 · ') + event.text;
+      view.timeline.append(row);
+    }
+    followOutput();
+  }
+  function finishView(view, run) {
+    if (view.done) return;
+    view.done = true; renderPending(view, true);
+    view.section.classList.remove('running'); view.section.dataset.status = run.status;
+    view.label.textContent = statusLabels[run.status] || run.status;
+    const elapsed = Math.max(0, (Date.parse(run.updated_at) - Date.parse(run.created_at)) / 1000);
+    view.meta.textContent = (Number.isFinite(elapsed) ? elapsed.toFixed(1) + ' 秒 · ' : '') + view.tools.size + ' 次工具调用' + (run.calls ? ' · ' + run.calls + ' 轮模型调用' : '');
+    for (const step of view.steps.values()) step.classList.remove('pending');
+    for (const tool of view.tools.values()) {
+      if (tool.details.classList.contains('pending')) { tool.details.classList.remove('pending'); tool.badge.textContent = '已中断，结果未知'; }
+    }
+    if (run.answer) {
+      if (!view.lastMessage) view.lastMessage = message('assistant', run.answer, view.timeline);
+      else { view.lastMessage.text = run.answer; renderText(view.lastMessage.body, run.answer); }
+    }
+    view.section.querySelectorAll('.streaming').forEach(item => item.classList.remove('streaming'));
+    if (view.lastMessage) {
+      renderSources(view.lastMessage.article, run.sources || []);
+      const copy = document.createElement('button'); copy.className = 'copy-answer'; copy.type = 'button'; copy.textContent = '复制回复';
+      copy.addEventListener('click', () => copyText(view.lastMessage.text, copy)); view.lastMessage.article.append(copy);
+    }
+    if (run.error && run.status !== 'cancelled') { const error = document.createElement('p'); error.className = 'run-error'; error.textContent = run.error; view.timeline.append(error); }
+    if (!view.tools.size && !view.lastMessage && !run.error) { const hint = document.createElement('p'); hint.className = 'model-step'; hint.textContent = '本次任务未调用工具。'; view.timeline.append(hint); }
+    followOutput();
+  }
+  function resetTransport() {
+    clearTimeout(state.pollTimer); state.pollTimer = null;
+    state.stream?.abort(); state.stream = null;
+    for (const view of state.views.values()) clearTimeout(view.renderTimer);
+  }
+  async function finishRun(view, run, epoch) {
+    if (epoch !== state.epoch || state.run !== run.id) return;
+    finishView(view, run); state.run = ''; busy(false);
+    status(run.status === 'completed' ? '' : statusLabels[run.status] || run.error, run.status !== 'cancelled' && run.status !== 'completed');
+    $('prompt').focus();
     try {
-      const run = await api('/runs/' + id);
-      if (epoch !== state.epoch) return;
-      $('activity').hidden = !run.events.length;
-      $('events').replaceChildren(...run.events.map(event => { const li = document.createElement('li'); li.textContent = event.type + (event.text.trim() ? ' · ' + event.text : ''); return li; }));
-      if (run.status === 'running') { status('正在思考与查证…'); state.pollTimer = setTimeout(() => poll(id, epoch), 1300); return; }
-      state.run = ''; busy(false);
-      if (!state.seen.has(id)) { state.seen.add(id); if (run.answer) message('assistant', run.answer, run.sources); }
-      status(run.status === 'completed' ? '' : run.error || run.status, run.status !== 'completed');
       const session = await api('/sessions/' + state.session);
       if (epoch !== state.epoch) return;
-      renderApprovals(session.approvals);
-      $('todos').replaceChildren(...session.todos.map(todo => { const li = document.createElement('li'); li.textContent = todo.status + ' · ' + todo.content; return li; }));
-    } catch (error) { if (epoch !== state.epoch) return; status(error.message + '，正在重连…', true); state.pollTimer = setTimeout(() => poll(id, epoch), 4000); }
+      renderApprovals(session.approvals || []); renderTodos(session.todos || []);
+    } catch (error) { if (epoch === state.epoch) status(error.message, true); }
+  }
+  async function watch(id, epoch, failures = 0) {
+    if (epoch !== state.epoch || state.run !== id) return;
+    const view = runView(id), controller = new AbortController(); state.stream = controller;
+    let idleTimer;
+    const touch = () => { clearTimeout(idleTimer); idleTimer = setTimeout(() => controller.abort(), 45000); };
+    touch(); status(failures ? '正在重连，已保留当前输出…' : '正在思考与查证…');
+    try {
+      const headers = { Accept: 'text/event-stream' }; if (state.owner) headers.Authorization = 'Bearer ' + state.owner;
+      const response = await fetch('/api/v1/agent/runs/' + id + '/events?after=' + view.cursor, { headers, credentials: 'same-origin', signal: controller.signal });
+      if (!response.ok || !response.headers.get('content-type')?.includes('text/event-stream')) throw new Error('实时连接暂不可用');
+      const reader = response.body.getReader(), decoder = new TextDecoder();
+      let buffer = '';
+      try {
+        while (true) {
+          const { value, done } = await reader.read();
+          if (epoch !== state.epoch || state.run !== id) return;
+          if (done) throw new Error('实时连接已断开');
+          touch(); buffer += decoder.decode(value, { stream: true });
+          buffer = buffer.replace(/\r\n/g, '\n');
+          let boundary;
+          while ((boundary = buffer.indexOf('\n\n')) >= 0) {
+            const frame = buffer.slice(0, boundary); buffer = buffer.slice(boundary + 2);
+            let kind = '', sequence = 0; const data = [];
+            for (const line of frame.split('\n')) {
+              if (line.startsWith('event:')) kind = line.slice(6).trim();
+              if (line.startsWith('id:')) sequence = Number(line.slice(3).trim());
+              if (line.startsWith('data:')) data.push(line.slice(5).trimStart());
+            }
+            if (!data.length) continue;
+            const payload = JSON.parse(data.join('\n'));
+            if (kind === 'activity' && sequence > view.cursor) { applyEvent(view, payload); view.cursor = sequence; failures = 0; }
+            if (kind === 'done') { await finishRun(view, payload, epoch); return; }
+          }
+        }
+      } finally { await reader.cancel().catch(() => {}); }
+    } catch (error) {
+      if (epoch !== state.epoch || state.run !== id) return;
+      try {
+        const run = await api('/runs/' + id);
+        if (epoch !== state.epoch || state.run !== id) return;
+        for (const event of (run.events || []).slice(view.cursor)) { applyEvent(view, event); view.cursor++; }
+        if (run.status !== 'running') { await finishRun(view, { ...run, id }, epoch); return; }
+        status('实时连接中断，正在重连；当前输出已保留。');
+      } catch (fallbackError) { status(fallbackError.message + '，正在重连…', true); }
+      state.pollTimer = setTimeout(() => watch(id, epoch, failures + 1), Math.min(1000 * 2 ** failures, 8000));
+    } finally { clearTimeout(idleTimer); if (state.stream === controller) state.stream = null; }
   }
   $('chat-form').addEventListener('submit', async event => {
     event.preventDefault(); if (state.run) return;
@@ -131,14 +321,22 @@
         api('/runs/' + result.run_id + '/cancel', {}, owner).catch(() => {});
         return;
       }
-      message('user', text); $('prompt').value = ''; state.run = result.run_id; poll(state.run, state.epoch);
+      state.follow = true; message('user', text); $('prompt').value = ''; resizePrompt(); state.run = result.run_id; watch(state.run, state.epoch);
     } catch (error) { if (epoch !== state.epoch) return; busy(false); status(error.message, true); }
   });
-  $('cancel').addEventListener('click', async () => { try { await api('/runs/' + state.run + '/cancel', {}); status('正在停止…'); } catch (e) { status(e.message, true); } });
+  $('cancel').addEventListener('click', async () => { if (!state.run) return; $('cancel').disabled = true; try { await api('/runs/' + state.run + '/cancel', {}); status('正在停止…'); } catch (e) { status(e.message, true); $('cancel').disabled = false; } });
   $('goal-mode').addEventListener('change', () => { $('goal').hidden = !$('goal-mode').checked; });
-  $('new-chat').addEventListener('click', () => { if (state.run) return; state.epoch++; state.session = ''; $('conversation').replaceChildren(welcome.cloneNode(true)); $('approvals').replaceChildren(); $('activity').hidden = true; status(''); listSessions(); });
+  $('new-chat').addEventListener('click', () => { if (state.run) return; state.epoch++; resetTransport(); state.session = ''; state.views.clear(); state.follow = true; $('conversation').replaceChildren(welcome.cloneNode(true)); $('approvals').replaceChildren(); renderTodos([]); status(''); listSessions(); $('prompt').focus(); });
   $('conversation').addEventListener('click', event => { const button = event.target.closest('[data-prompt]'); if (button) { $('prompt').value = button.dataset.prompt; $('prompt').focus(); } });
   $('prompt').addEventListener('keydown', event => { if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) { event.preventDefault(); $('chat-form').requestSubmit(); } });
+  function resizePrompt() { $('prompt').style.height = 'auto'; $('prompt').style.height = Math.min($('prompt').scrollHeight, 180) + 'px'; }
+  $('prompt').addEventListener('input', resizePrompt);
+  $('conversation').addEventListener('scroll', () => {
+    const el = $('conversation'); state.follow = el.scrollHeight - el.scrollTop - el.clientHeight < 100;
+    $('jump-bottom').hidden = state.follow;
+  });
+  $('jump-bottom').addEventListener('click', () => { state.follow = true; followOutput(); $('jump-bottom').hidden = true; });
+  window.addEventListener('pagehide', resetTransport);
   $('owner-toggle').addEventListener('click', () => $('owner-dialog').showModal());
   $('owner-login').addEventListener('submit', async event => {
     event.preventDefault();
@@ -148,8 +346,8 @@
       const info = await api('/info', undefined, token);
       if (!info.owner) throw new Error('令牌无效');
       const oldRun = state.run, oldOwner = state.owner;
-      state.epoch++; clearTimeout(state.pollTimer);
-      state.owner = token; state.session = ''; state.run = ''; state.seen.clear();
+      state.epoch++; resetTransport();
+      state.owner = token; state.session = ''; state.run = ''; state.views.clear();
       busy(false); status('');
       $('prompt').value = '';
       $('conversation').replaceChildren(welcome.cloneNode(true));

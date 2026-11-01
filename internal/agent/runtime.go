@@ -37,6 +37,7 @@ type Service struct {
 	wg             sync.WaitGroup
 	mcp            *MCPRegistry
 	trustedProxies []*net.IPNet
+	watchers       map[string]map[chan struct{}]struct{}
 }
 
 type Execution struct {
@@ -65,7 +66,8 @@ func NewService(cfg Config, model Model) (*Service, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	s := &Service{cfg: cfg, store: store, model: model, web: NewWeb(cfg.SearchURL),
 		hooks: []Hook{}, tools: toolRegistry(), cancels: map[string]context.CancelFunc{},
-		slots: make(chan struct{}, cfg.Concurrency), ctx: ctx, cancel: cancel}
+		slots: make(chan struct{}, cfg.Concurrency), ctx: ctx, cancel: cancel,
+		watchers: map[string]map[chan struct{}]struct{}{}}
 	s.mcp = newMCPRegistry(cfg.MCPConfig)
 	s.trustedProxies = trusted
 	if err := s.recover(); err != nil {
@@ -191,13 +193,7 @@ func (s *Service) hook(ctx context.Context, event HookEvent) error {
 		}
 	}
 	if event.RunID != "" {
-		return updateRecord(s.store, "runs", event.RunID, func(run *Run) error {
-			if len(run.Events) < 200 {
-				run.Events = append(run.Events, Event{Type: event.Phase, Text: clip(event.Tool+" "+event.Text, 300), At: time.Now().UTC()})
-			}
-			run.UpdatedAt = time.Now().UTC()
-			return nil
-		})
+		return s.recordEvent(event.RunID, Event{Type: event.Phase, Tool: event.Tool, Text: event.Text})
 	}
 	return nil
 }
@@ -319,6 +315,7 @@ func (s *Service) work(ctx context.Context, run Run, owner bool) {
 		}
 		return writeRecord(tx, "sessions", run.SessionID, session)
 	})
+	s.notifyRun(run.ID)
 }
 
 func (s *Service) complete(ctx context.Context, ex *Execution, messages []Message, tools []ToolDefinition) (Message, error) {
@@ -356,7 +353,7 @@ func (s *Service) loop(ctx context.Context, ex *Execution, messages []Message, g
 			system += "\nAcceptance criteria for this run: " + goal
 		}
 		input := append([]Message{{Role: "system", Content: system}}, messages...)
-		message, err := s.complete(ctx, ex, input, s.definitions(ex))
+		message, err := s.completeTurn(ctx, ex, input)
 		if err != nil {
 			return "", messages, err
 		}
@@ -489,8 +486,35 @@ func (s *Service) Cancel(principal, id string) error {
 	return nil
 }
 
-func (s *Service) execute(ctx context.Context, ex *Execution, call ToolCall, approved bool) string {
+func (s *Service) execute(ctx context.Context, ex *Execution, call ToolCall, approved bool) (output string) {
 	name := call.Function.Name
+	if call.ID == "" {
+		call.ID = newID()
+	}
+	started := time.Now()
+	_ = s.recordEvent(ex.RunID, Event{
+		Type: "tool_start", Agent: ex.Agent, Tool: name, CallID: call.ID, Arguments: call.Function.Arguments,
+	})
+	defer func() {
+		output = s.cfg.redact(output)
+		status := "completed"
+		var receipt struct {
+			Error  string `json:"error"`
+			Status string `json:"status"`
+		}
+		if json.Unmarshal([]byte(output), &receipt) == nil {
+			if receipt.Error != "" {
+				status = "failed"
+			}
+			if receipt.Status == "approval_required" {
+				status = "approval_required"
+			}
+		}
+		_ = s.recordEvent(ex.RunID, Event{
+			Type: "tool_end", Agent: ex.Agent, Tool: name, CallID: call.ID,
+			Status: status, Result: output, DurationMS: time.Since(started).Milliseconds(),
+		})
+	}()
 	tool, ok := s.tools[name]
 	if !ok {
 		return toolJSON(map[string]string{"error": "unknown tool"})

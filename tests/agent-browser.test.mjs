@@ -39,6 +39,8 @@ test("interrupted approvals show unknown outcome without replay controls", async
       const files = {
         "/agent": ["view/html/agent.html", "text/html"],
         "/view/JS/agent.js": ["view/JS/agent.js", "text/javascript"],
+        "/static/agent-build/agent.js": ["static/agent-build/agent.js", "text/javascript"],
+        "/static/agent-build/agent.css": ["static/agent-build/agent.css", "text/css"],
         "/view/css/agent.css": ["view/css/agent.css", "text/css"],
       };
       if (files[path]) {
@@ -104,6 +106,8 @@ for (const delayed of [false, true]) {
         const files = {
           "/agent": ["view/html/agent.html", "text/html"],
           "/view/JS/agent.js": ["view/JS/agent.js", "text/javascript"],
+          "/static/agent-build/agent.js": ["static/agent-build/agent.js", "text/javascript"],
+          "/static/agent-build/agent.css": ["static/agent-build/agent.css", "text/css"],
           "/view/css/agent.css": ["view/css/agent.css", "text/css"],
         };
         if (files[path]) {
