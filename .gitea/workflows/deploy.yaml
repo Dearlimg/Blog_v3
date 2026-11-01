@@ -1,0 +1,29 @@
+name: deploy-blog
+on:
+  push:
+    branches: [main]
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 在 natvps 上拉取源码（走 gitea 本机 NodePort，绕开 dind 网络栈）
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh -o StrictHostKeyChecking=no -p 46546 root@114.66.0.89 \
+            "rm -rf /root/workspace/blog-src && git clone --depth=1 --branch=main http://gao:${GITHUB_TOKEN}@127.0.0.1:30300/gao/blog-v3.git /root/workspace/blog-src 2>&1 | grep -v Cloning; echo CLONE_COMMIT=\$(git -C /root/workspace/blog-src log --oneline -1)"
+
+      - name: 部署（编译→测试→镜像→备份→重启→验证）
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh -o StrictHostKeyChecking=no -p 46546 root@114.66.0.89 \
+            "bash /root/deploy-blog-remote.sh /root/workspace/blog-src"
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}

@@ -1,0 +1,58 @@
+# Blog_v3 服务器部署（阿里云 ECS 121.40.235.227）
+# 复用 workspace_default 网络上已有的 mysql / redis 容器
+# nginx 反代层占宿主机 80，gzip 压缩 + 静态缓存；Go 应用只在内网 8080
+services:
+  blog-front:
+    image: blog-front:latest
+    container_name: blog-front
+    networks:
+      workspace_default:
+        aliases:
+          - blog-front
+    environment:
+      SERVER_PORT: "8080"
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DB_USER: root
+      DB_PASSWORD: sta_go
+      DB_NAME: blog_front
+      REDIS_ADDR: redis:6379
+      REDIS_PASSWORD: sta_go
+      REDIS_DB: "0"
+      JWT_SECRET: 2380f0f877b3eb91a81446719b6ac00c6b26e0369216044a8f39307f2bc017f6
+      JWT_EXPIRE: "7200"
+      DEEPSEEK_API_KEY_FILE: /run/secrets/deepseek_api_key
+      AGENT_DATA_PATH: /app/.agent-data/agent.db
+    volumes:
+      - ./secrets/deepseek_api_key:/run/secrets/deepseek_api_key:ro
+      - ./agent-data:/app/.agent-data
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  nginx:
+    image: nginx:alpine
+    container_name: blog-nginx
+    networks:
+      workspace_default:
+        aliases:
+          - blog-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - blog-front
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  workspace_default:
+    external: true
