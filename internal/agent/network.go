@@ -103,7 +103,7 @@ func (w *Web) get(ctx context.Context, raw string) ([]byte, error) {
 	if err != nil {
 		return nil, errors.New("web request failed")
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != 200 {
 		return nil, errors.New("source unavailable")
 	}

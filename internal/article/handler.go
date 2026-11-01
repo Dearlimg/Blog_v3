@@ -371,13 +371,13 @@ func (h *Handler) Upload(c *gin.Context) {
 	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 5*1024*1024+65536)
 	file, _, err := c.Request.FormFile("file")
 	if c.Request.MultipartForm != nil {
-		defer c.Request.MultipartForm.RemoveAll()
+		defer func() { _ = c.Request.MultipartForm.RemoveAll() }()
 	}
 	if err != nil {
 		response.BadRequest(c, "image required (max 5 MB)")
 		return
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	data, err := io.ReadAll(io.LimitReader(file, 5*1024*1024+1))
 	if err != nil || len(data) > 5*1024*1024 {
 		response.BadRequest(c, "image too large")

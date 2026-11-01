@@ -36,7 +36,7 @@ func (r *Repository) IncrPV(date string) {
 	pipe := r.rdb.TxPipeline()
 	pipe.Incr(ctx, key)
 	pipe.Expire(ctx, key, redisTTL)
-	pipe.Exec(ctx)
+	_, _ = pipe.Exec(ctx)
 }
 
 func (r *Repository) PfaddUV(date, ip string) {
@@ -49,7 +49,7 @@ func (r *Repository) PfaddUV(date, ip string) {
 	pipe := r.rdb.TxPipeline()
 	pipe.PFAdd(ctx, key, ip)
 	pipe.Expire(ctx, key, redisTTL)
-	pipe.Exec(ctx)
+	_, _ = pipe.Exec(ctx)
 }
 
 func (r *Repository) RedisPV(date string) (int64, error) {
@@ -81,7 +81,9 @@ func (r *Repository) QueryMySQL(date string) (*VisitLog, error) {
 }
 
 func (r *Repository) SumAllMySQL() (pv, uv int64) {
-	r.db.Model(&VisitLog{}).Select("COALESCE(SUM(pv),0), COALESCE(SUM(uv),0)").Row().Scan(&pv, &uv)
+	if err := r.db.Model(&VisitLog{}).Select("COALESCE(SUM(pv),0), COALESCE(SUM(uv),0)").Row().Scan(&pv, &uv); err != nil {
+		return 0, 0
+	}
 	return
 }
 

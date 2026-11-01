@@ -52,7 +52,7 @@ func (p *DeepSeek) Complete(ctx context.Context, messages []Message, tools []Too
 	if err != nil {
 		return Completion{}, errors.New("model connection failed")
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		// Provider error bodies can contain credentials or prompt data. Never relay them.
 		return Completion{}, fmt.Errorf("model service returned HTTP %d", resp.StatusCode)

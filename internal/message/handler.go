@@ -79,8 +79,8 @@ func (h *Handler) Create(c *gin.Context) {
 		return
 	}
 	if retryAfter > 0 {
-		retrySeconds := (retryAfter + time.Second - 1) / time.Second
-		c.Header("Retry-After", strconv.FormatInt(int64(retrySeconds), 10))
+		retryWait := (retryAfter + time.Second - 1) / time.Second
+		c.Header("Retry-After", strconv.FormatInt(int64(retryWait), 10))
 		response.Error(c, http.StatusTooManyRequests, http.StatusTooManyRequests, "please wait before submitting another message")
 		return
 	}

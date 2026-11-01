@@ -59,7 +59,7 @@ func NewService(cfg Config, model Model) (*Service, error) {
 		slots: make(chan struct{}, cfg.Concurrency), ctx: ctx, cancel: cancel}
 	s.mcp = newMCPRegistry(cfg.MCPConfig)
 	if err := s.recover(); err != nil {
-		store.Close()
+		_ = store.Close()
 		cancel()
 		return nil, err
 	}

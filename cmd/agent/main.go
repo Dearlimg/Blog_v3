@@ -30,7 +30,7 @@ func main() {
 		slog.Error("agent storage initialization failed")
 		os.Exit(1)
 	}
-	defer svc.Close()
+	defer func() { _ = svc.Close() }()
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 	r.Use(gin.Recovery())

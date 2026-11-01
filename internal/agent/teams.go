@@ -4,13 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"slices"
-	"strings"
 	"sync"
 	"time"
-
-	bolt "go.etcd.io/bbolt"
 )
 
 type Team struct {
@@ -152,7 +148,7 @@ type Workflow struct {
 }
 
 func (s *Service) workflow(ctx context.Context, ex *Execution, a Args) (any, error) {
-	dimensions := []string{}
+	var dimensions []string
 	switch a.Name {
 	case "research-brief":
 		dimensions = []string{"primary-sources", "counter-evidence"}
@@ -223,34 +219,3 @@ func (s *Service) workflow(ctx context.Context, ex *Execution, a Args) (any, err
 	return wf, s.store.put("workflows", wf.ID, wf)
 }
 
-func (s *Service) recoverWorkers() error {
-	return s.store.db.Update(func(tx *bolt.Tx) error {
-		if err := tx.Bucket([]byte("teams")).ForEach(func(k, v []byte) error {
-			var team Team
-			if err := json.Unmarshal(v, &team); err != nil {
-				return err
-			}
-			if team.Status == "running" {
-				team.Status = "idle"
-				return writeRecord(tx, "teams", string(k), team)
-			}
-			return nil
-		}); err != nil {
-			return err
-		}
-		return tx.Bucket([]byte("tasks")).ForEach(func(k, v []byte) error {
-			var task Task
-			if err := json.Unmarshal(v, &task); err != nil {
-				return err
-			}
-			if task.Status == "in_progress" && strings.Contains(task.Owner, ":") {
-				task.Status = "pending"
-				task.Owner = ""
-				return writeRecord(tx, "tasks", string(k), task)
-			}
-			return nil
-		})
-	})
-}
-
-var _ = fmt.Sprintf

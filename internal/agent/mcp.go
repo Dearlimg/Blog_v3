@@ -93,7 +93,7 @@ func (r *MCPRegistry) List(ctx context.Context, name string) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer session.Close()
+	defer func() { _ = session.Close() }()
 	tools := []*mcp.Tool{}
 	params := &mcp.ListToolsParams{}
 	for range 10 {
@@ -123,7 +123,7 @@ func (r *MCPRegistry) Call(ctx context.Context, a Args) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer session.Close()
+	defer func() { _ = session.Close() }()
 	result, err := session.CallTool(ctx, &mcp.CallToolParams{Name: a.Agent, Arguments: a.Arguments})
 	if err != nil {
 		return nil, errors.New("MCP call failed")
