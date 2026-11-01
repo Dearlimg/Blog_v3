@@ -11,18 +11,20 @@ import (
 )
 
 type Config struct {
-	APIKey      string `json:"-"`
-	OwnerToken  string `json:"-"`
-	BaseURL     string
-	Model       string
-	DataPath    string
-	SearchURL   string
-	MCPConfig   string
-	MaxCalls    int
-	MaxTokens   int
-	MaxSteps    int
-	Concurrency int
-	RunTimeout  time.Duration
+	APIKey         string `json:"-"`
+	OwnerToken     string `json:"-"`
+	BaseURL        string
+	Model          string
+	DataPath       string
+	SearchURL      string
+	MCPConfig      string
+	MaxCalls       int
+	MaxTokens      int
+	MaxSteps       int
+	Concurrency    int
+	RunTimeout     time.Duration
+	TrustedProxies []string
+	RetentionDays  int
 }
 
 func ConfigFromEnv() (Config, error) {
@@ -36,16 +38,18 @@ func ConfigFromEnv() (Config, error) {
 	}
 	return Config{
 		APIKey: key, OwnerToken: owner,
-		BaseURL:     env("DEEPSEEK_BASE_URL", "https://api.deepseek.com"),
-		Model:       env("DEEPSEEK_MODEL", "deepseek-chat"),
-		DataPath:    env("AGENT_DATA_PATH", filepath.Join(".agent-data", "agent.db")),
-		SearchURL:   env("AGENT_SEARCH_URL", "https://www.bing.com/search"),
-		MCPConfig:   os.Getenv("AGENT_MCP_CONFIG"),
-		MaxCalls:    envInt("AGENT_MAX_CALLS", 24, 2, 100),
-		MaxTokens:   envInt("AGENT_MAX_TOKENS", 80000, 4000, 200000),
-		MaxSteps:    envInt("AGENT_MAX_STEPS", 12, 1, 40),
-		Concurrency: envInt("AGENT_CONCURRENCY", 3, 1, 8),
-		RunTimeout:  time.Duration(envInt("AGENT_TIMEOUT_SECONDS", 240, 30, 600)) * time.Second,
+		BaseURL:        env("DEEPSEEK_BASE_URL", "https://api.deepseek.com"),
+		Model:          env("DEEPSEEK_MODEL", "deepseek-chat"),
+		DataPath:       env("AGENT_DATA_PATH", filepath.Join(".agent-data", "agent.db")),
+		SearchURL:      env("AGENT_SEARCH_URL", "https://www.bing.com/search"),
+		MCPConfig:      os.Getenv("AGENT_MCP_CONFIG"),
+		MaxCalls:       envInt("AGENT_MAX_CALLS", 24, 2, 100),
+		MaxTokens:      envInt("AGENT_MAX_TOKENS", 80000, 4000, 200000),
+		MaxSteps:       envInt("AGENT_MAX_STEPS", 12, 1, 40),
+		Concurrency:    envInt("AGENT_CONCURRENCY", 3, 1, 8),
+		RunTimeout:     time.Duration(envInt("AGENT_TIMEOUT_SECONDS", 240, 30, 600)) * time.Second,
+		TrustedProxies: strings.FieldsFunc(os.Getenv("TRUSTED_PROXIES"), func(r rune) bool { return r == ',' }),
+		RetentionDays:  envInt("AGENT_RETENTION_DAYS", 90, 1, 3650),
 	}, nil
 }
 

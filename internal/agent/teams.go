@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"maps"
 	"slices"
 	"sync"
 	"time"
@@ -31,7 +32,7 @@ type Mail struct {
 
 func (s *Service) teamTool(ctx context.Context, ex *Execution, name string, a Args) (any, error) {
 	if name == "team_list" {
-		items, err := records[Team](s.store, "teams")
+		items, err := indexedRecords[Team](s.store, "teams", "principal", ex.Principal)
 		result := []Team{}
 		for _, item := range items {
 			if item.Principal == ex.Principal {
@@ -98,6 +99,11 @@ func (s *Service) runTeam(ctx context.Context, ex *Execution, team Team, prompt 
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	results := map[string]string{}
+	// Workers read an immutable snapshot while publishing their new contexts.
+	contexts := maps.Clone(team.Contexts)
+	if team.Contexts == nil {
+		team.Contexts = map[string][]Message{}
+	}
 	for _, member := range team.Members {
 		wg.Add(1)
 		go func(member string) {
@@ -105,7 +111,7 @@ func (s *Service) runTeam(ctx context.Context, ex *Execution, team Team, prompt 
 			child := *ex
 			child.Depth++
 			child.Agent = team.ID + ":" + member
-			messages := append([]Message{}, team.Contexts[member]...)
+			messages := append([]Message{}, contexts[member]...)
 			instruction := "Team plan: " + team.Plan + "\nYour role: " + member + "\nTask: " + prompt + "\nClaim a ready task with task_claim if one matches your role. Complete it with evidence. Send the lead your conclusions."
 			messages = append(messages, Message{Role: "user", Content: instruction})
 			answer, history, err := s.loop(ctx, &child, messages, "")
@@ -126,7 +132,7 @@ func (s *Service) runTeam(ctx context.Context, ex *Execution, team Team, prompt 
 }
 
 func (s *Service) injectMail(ex *Execution, messages *[]Message) {
-	mail, _ := records[Mail](s.store, "mail")
+	mail, _ := indexedRecords[Mail](s.store, "mail", "to", ex.Agent)
 	for _, item := range mail {
 		if item.Principal != ex.Principal || item.To != ex.Agent || item.Delivered {
 			continue
@@ -170,6 +176,11 @@ func (s *Service) workflow(ctx context.Context, ex *Execution, a Args) (any, err
 			return wf, nil
 		}
 	}
+	if wf.Steps == nil {
+		wf.Steps = map[string]string{}
+	}
+	wf.Status = "running"
+	wf.UpdatedAt = time.Now().UTC()
 	if err := s.store.put("workflows", wf.ID, wf); err != nil {
 		return nil, err
 	}
@@ -177,10 +188,15 @@ func (s *Service) workflow(ctx context.Context, ex *Execution, a Args) (any, err
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	errorsSeen := []error{}
+	// Determine pending work before any worker can mutate checkpoint state.
+	pending := []string{}
 	for _, dimension := range dimensions {
 		if _, done := wf.Steps[dimension]; done {
 			continue
 		}
+		pending = append(pending, dimension)
+	}
+	for _, dimension := range pending {
 		wg.Add(1)
 		go func(dimension string) {
 			defer wg.Done()
@@ -218,4 +234,3 @@ func (s *Service) workflow(ctx context.Context, ex *Execution, a Args) (any, err
 	wf.UpdatedAt = time.Now().UTC()
 	return wf, s.store.put("workflows", wf.ID, wf)
 }
-

@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -22,11 +23,11 @@ type Task struct {
 }
 
 func (s *Service) deleteRecord(bucket, id string) error {
-	return s.store.db.Update(func(tx *bolt.Tx) error { return tx.Bucket([]byte(bucket)).Delete([]byte(id)) })
+	return s.store.db.Update(func(tx *bolt.Tx) error { return deleteStoredRecord(tx, bucket, id) })
 }
 
 func (s *Service) taskTool(ex *Execution, name string, a Args) (any, error) {
-	items, err := records[Task](s.store, "tasks")
+	items, err := indexedRecords[Task](s.store, "tasks", "principal", ex.Principal)
 	if err != nil {
 		return nil, err
 	}
@@ -161,9 +162,25 @@ func (s *Service) approve(ctxEx *Execution, id string, allow bool) (Approval, er
 		if s.tools[approval.Tool].Owner && !ctxEx.Owner {
 			return errors.New("owner permission required")
 		}
+		var session Session
+		if err := readRecord(tx, "sessions", approval.SessionID, &session); err != nil {
+			return err
+		}
+		if session.ActiveRun != "" {
+			return ErrBusy
+		}
 		approval.Status = "denied"
 		if allow {
 			approval.Status = "executing"
+			session.ActiveRun = "approval:" + approval.ID
+			if err := writeRecord(tx, "sessions", session.ID, session); err != nil {
+				return err
+			}
+		} else {
+			approval.Result = `{"status":"denied","message":"The user denied this action; it was not executed."}`
+			if err := recordApprovalReceipt(tx, &approval); err != nil {
+				return err
+			}
 		}
 		return writeRecord(tx, "approvals", id, approval)
 	})
@@ -171,12 +188,41 @@ func (s *Service) approve(ctxEx *Execution, id string, allow bool) (Approval, er
 		return approval, err
 	}
 	call := ToolCall{ID: id, Function: FunctionCall{Name: approval.Tool, Arguments: string(approval.Arguments)}}
-	approval.Result = s.execute(s.ctx, ctxEx, call, true)
+	ctx, cancel := context.WithTimeout(s.ctx, s.cfg.RunTimeout)
+	defer cancel()
+	approval.Result = s.execute(ctx, ctxEx, call, true)
 	approval.Status = "approved"
 	var result map[string]json.RawMessage
 	if json.Unmarshal([]byte(approval.Result), &result) == nil && result["error"] != nil {
 		approval.Status = "failed"
 	}
-	err = s.store.put("approvals", id, approval)
+	err = s.store.db.Update(func(tx *bolt.Tx) error {
+		if err := recordApprovalReceipt(tx, &approval); err != nil {
+			return err
+		}
+		return writeRecord(tx, "approvals", id, approval)
+	})
 	return approval, err
+}
+
+func recordApprovalReceipt(tx *bolt.Tx, approval *Approval) error {
+	if approval.ReceiptRecorded {
+		return nil
+	}
+	var session Session
+	if err := readRecord(tx, "sessions", approval.SessionID, &session); err != nil {
+		return err
+	}
+	if session.ActiveRun == "approval:"+approval.ID {
+		session.ActiveRun = ""
+	}
+	session.Messages = append(session.Messages, Message{
+		Role: "user", Internal: true, Content: "Untrusted tool approval receipt: " + toolJSON(map[string]string{
+			"approval_id": approval.ID, "tool": approval.Tool,
+			"status": approval.Status, "result": approval.Result,
+		}),
+	})
+	session.UpdatedAt = time.Now().UTC()
+	approval.ReceiptRecorded = true
+	return writeRecord(tx, "sessions", session.ID, session)
 }

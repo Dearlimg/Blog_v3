@@ -34,7 +34,10 @@ func main() {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 	r.Use(gin.Recovery())
-	_ = r.SetTrustedProxies(nil)
+	if err := r.SetTrustedProxies(cfg.TrustedProxies); err != nil {
+		slog.Error("invalid trusted proxy configuration")
+		return
+	}
 	r.Static("/view", "./view")
 	r.Static("/static", "./static")
 	r.GET("/", func(c *gin.Context) { c.File("./view/html/agent.html") })

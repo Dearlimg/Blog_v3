@@ -32,6 +32,8 @@ type Args struct {
 	Agent     string         `json:"agent"`
 	Cron      string         `json:"cron"`
 	Goal      string         `json:"goal"`
+	Offset    int            `json:"offset"`
+	Limit     int            `json:"limit"`
 	DependsOn []string       `json:"depends_on"`
 	Items     []Todo         `json:"items"`
 	Members   []string       `json:"members"`
@@ -63,7 +65,7 @@ func toolRegistry() map[string]Tool {
 		"note_read":        {Description: "Read one workspace note.", Fields: map[string]string{"id": "string"}, Required: []string{"id"}},
 		"note_write":       {Description: "Create or replace a workspace note after approval.", Fields: map[string]string{"id": "string", "title": "string", "content": "string"}, Required: []string{"title", "content"}, Approval: true, LeadOnly: true},
 		"note_edit":        {Description: "Replace exactly one occurrence of old text in a note after approval.", Fields: map[string]string{"id": "string", "old": "string", "content": "string"}, Required: []string{"id", "old", "content"}, Approval: true, LeadOnly: true},
-		"artifact_read":    {Description: "Read a stored large tool result.", Fields: map[string]string{"id": "string"}, Required: []string{"id"}},
+		"artifact_read":    {Description: "Read a stored tool result in rune-based pages. Follow next_offset until eof is true.", Fields: map[string]string{"id": "string", "offset": "integer", "limit": "integer"}, Required: []string{"id"}},
 		"subagent":         {Description: "Delegate a bounded research subtask in an isolated context. Shares the parent's budget; cannot modify durable state.", Fields: map[string]string{"prompt": "string", "name": "string"}, Required: []string{"prompt"}},
 		"task_create":      {Description: "Create a persistent task. Dependencies are runtime task IDs.", Fields: map[string]string{"title": "string", "content": "string", "depends_on": "strings"}, Required: []string{"title"}, LeadOnly: true},
 		"task_update":      {Description: "Update a task: pending/in_progress/completed. Dependencies must be completed to claim or finish. Completion requires evidence content.", Fields: map[string]string{"id": "string", "status": "string", "depends_on": "strings", "content": "string"}, Required: []string{"id"}, LeadOnly: true},
@@ -185,7 +187,7 @@ func (s *Service) dispatch(ctx context.Context, ex *Execution, name string, a Ar
 		}
 		return map[string]string{"deleted": a.ID}, s.deleteRecord("memory", a.ID)
 	case "notes_list":
-		items, err := records[Memory](s.store, "notes")
+		items, err := indexedRecords[Memory](s.store, "notes", "principal", ex.Principal)
 		result := []Memory{}
 		for _, item := range items {
 			if item.Principal == ex.Principal {
@@ -196,7 +198,22 @@ func (s *Service) dispatch(ctx context.Context, ex *Execution, name string, a Ar
 	case "note_read":
 		return s.ownedMemory("notes", ex.Principal, a.ID)
 	case "artifact_read":
-		return s.ownedMemory("artifacts", ex.Principal, a.ID)
+		item, err := s.ownedMemory("artifacts", ex.Principal, a.ID)
+		if err != nil {
+			return nil, err
+		}
+		content := []rune(item.Content)
+		if a.Offset < 0 || a.Offset > len(content) || a.Limit < 0 || a.Limit > 1500 {
+			return nil, errors.New("invalid artifact range; limit must be 1-1500")
+		}
+		if a.Limit == 0 {
+			a.Limit = 1500
+		}
+		end := a.Offset + min(a.Limit, len(content)-a.Offset)
+		return map[string]any{
+			"id": item.ID, "content": string(content[a.Offset:end]),
+			"next_offset": end, "total": len(content), "eof": end == len(content),
+		}, nil
 	case "note_edit":
 		item, err := s.ownedMemory("notes", ex.Principal, a.ID)
 		if err != nil {

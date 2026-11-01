@@ -30,6 +30,11 @@ func NewDeepSeek(cfg Config) (*DeepSeek, error) {
 }
 
 func (p *DeepSeek) Complete(ctx context.Context, messages []Message, tools []ToolDefinition) (Completion, error) {
+	// Internal receipts belong in model context, but storage-only flags do not.
+	messages = append([]Message{}, messages...)
+	for i := range messages {
+		messages[i].Internal = false
+	}
 	payload := struct {
 		Model       string           `json:"model"`
 		Messages    []Message        `json:"messages"`
@@ -77,6 +82,7 @@ func (p *DeepSeek) Complete(ctx context.Context, messages []Message, tools []Too
 		return Completion{}, errors.New("model output exceeded its token limit")
 	}
 	choice.Message.Role = "assistant"
+	choice.Message.Internal = false
 	choice.Message.Content = p.cfg.redact(choice.Message.Content)
 	for i := range choice.Message.ToolCalls {
 		choice.Message.ToolCalls[i].Function.Arguments = p.cfg.redact(choice.Message.ToolCalls[i].Function.Arguments)

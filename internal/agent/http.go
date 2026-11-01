@@ -92,16 +92,17 @@ func (s *Service) identity(c *gin.Context) {
 	principal, _ := c.Cookie("durlim_agent")
 	if !validID(principal) {
 		principal = newID()
-		http.SetCookie(c.Writer, &http.Cookie{Name: "durlim_agent", Value: principal,
-			Path: "/api/v1/agent", HttpOnly: true, Secure: c.Request.TLS != nil,
-			SameSite: http.SameSiteStrictMode, MaxAge: 30 * 24 * 60 * 60})
 	}
+	// Refresh existing cookies too, so HTTPS upgrades legacy non-Secure cookies.
+	http.SetCookie(c.Writer, &http.Cookie{Name: "durlim_agent", Value: principal,
+		Path: "/api/v1/agent", HttpOnly: true, Secure: s.secureRequest(c),
+		SameSite: http.SameSiteStrictMode, MaxAge: 30 * 24 * 60 * 60})
 	token := strings.TrimPrefix(c.GetHeader("Authorization"), "Bearer ")
 	owner := s.cfg.OwnerToken != "" && subtle.ConstantTimeCompare([]byte(token), []byte(s.cfg.OwnerToken)) == 1
 	if owner {
 		host, _, _ := net.SplitHostPort(c.Request.RemoteAddr)
-		local := net.ParseIP(host).IsLoopback()
-		if c.Request.TLS == nil && !local {
+		local := net.ParseIP(host).IsLoopback() && c.GetHeader("X-Forwarded-For") == "" && c.GetHeader("X-Forwarded-Proto") == ""
+		if !s.secureRequest(c) && !local {
 			agentError(c, 403, errors.New("owner access requires HTTPS or a local SSH tunnel"))
 			return
 		}
@@ -158,17 +159,19 @@ func (s *Service) sessionState(c *gin.Context) {
 	}
 	messages := []Message{}
 	for _, m := range session.Messages {
-		if (m.Role == "user" || m.Role == "assistant") && len(m.ToolCalls) == 0 {
+		if !m.Internal && (m.Role == "user" || m.Role == "assistant") && len(m.ToolCalls) == 0 {
 			messages = append(messages, Message{Role: m.Role, Content: m.Content})
 		}
 	}
-	approvals, _ := records[Approval](s.store, "approvals")
+	approvals, _ := indexedRecords[Approval](s.store, "approvals", "session_id", session.ID)
 	pending := []Approval{}
 	for _, approval := range approvals {
-		if approval.Principal == session.Principal && approval.SessionID == session.ID && approval.Status == "pending" {
-			if time.Since(approval.CreatedAt) <= time.Hour {
-				pending = append(pending, approval)
-			}
+		if approval.Principal != session.Principal || approval.SessionID != session.ID {
+			continue
+		}
+		if approval.Status == "interrupted" ||
+			(approval.Status == "pending" && time.Since(approval.CreatedAt) <= time.Hour) {
+			pending = append(pending, approval)
 		}
 	}
 	var todos TodoList
@@ -176,7 +179,11 @@ func (s *Service) sessionState(c *gin.Context) {
 	if todos.Items == nil {
 		todos.Items = []Todo{}
 	}
-	c.JSON(200, gin.H{"id": session.ID, "messages": messages, "active_run": session.ActiveRun, "approvals": pending, "todos": todos.Items})
+	activeRun := session.ActiveRun
+	if strings.HasPrefix(activeRun, "approval:") {
+		activeRun = ""
+	}
+	c.JSON(200, gin.H{"id": session.ID, "messages": messages, "active_run": activeRun, "approvals": pending, "todos": todos.Items})
 }
 
 func (s *Service) runState(c *gin.Context) {
@@ -219,8 +226,8 @@ func (s *Service) quota(c *gin.Context, kind string, perIP, global int) error {
 	if c.GetBool("agent_owner") {
 		perIP *= 10
 	}
-	host, _, _ := net.SplitHostPort(c.Request.RemoteAddr)
-	hash := sha256.Sum256([]byte(host))
+	// ClientIP only honors forwarding headers from the engine's trusted proxies.
+	hash := sha256.Sum256([]byte(c.ClientIP()))
 	day := time.Now().UTC().Format("2006-01-02")
 	keys := []string{day + ":" + kind + ":" + hex.EncodeToString(hash[:]), day + ":" + kind + ":global"}
 	return s.store.db.Update(func(tx *bolt.Tx) error {
@@ -247,10 +254,10 @@ func (s *Service) ownerState(c *gin.Context) {
 		agentError(c, 403, errors.New("owner access required"))
 		return
 	}
-	jobs, _ := records[Job](s.store, "jobs")
-	teams, _ := records[Team](s.store, "teams")
-	workflows, _ := records[Workflow](s.store, "workflows")
-	tasks, _ := records[Task](s.store, "tasks")
+	jobs, _ := indexedRecords[Job](s.store, "jobs", "principal", "owner")
+	teams, _ := indexedRecords[Team](s.store, "teams", "principal", "owner")
+	workflows, _ := indexedRecords[Workflow](s.store, "workflows", "principal", "owner")
+	tasks, _ := indexedRecords[Task](s.store, "tasks", "principal", "owner")
 	owned := []Task{}
 	for _, task := range tasks {
 		if task.Principal == "owner" {

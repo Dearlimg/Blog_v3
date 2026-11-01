@@ -2,6 +2,7 @@ package agent
 
 import (
 	"errors"
+	"log/slog"
 	"time"
 	_ "time/tzdata"
 
@@ -38,7 +39,7 @@ func cronNext(spec string, now time.Time) (time.Time, error) {
 }
 
 func (s *Service) jobTool(ex *Execution, name string, a Args) (any, error) {
-	items, err := records[Job](s.store, "jobs")
+	items, err := indexedRecords[Job](s.store, "jobs", "principal", ex.Principal)
 	if err != nil {
 		return nil, err
 	}
@@ -95,18 +96,24 @@ func (s *Service) scheduler() {
 	defer s.wg.Done()
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
+	maintenance := time.NewTicker(time.Hour)
+	defer maintenance.Stop()
 	for {
 		select {
 		case <-s.ctx.Done():
 			return
 		case now := <-ticker.C:
 			s.tickJobs(now)
+		case now := <-maintenance.C:
+			if err := s.store.prune(now, s.cfg.RetentionDays); err != nil {
+				slog.Error("agent retention cleanup failed", "error", err)
+			}
 		}
 	}
 }
 
 func (s *Service) tickJobs(now time.Time) {
-	jobs, err := records[Job](s.store, "jobs")
+	jobs, err := indexedRecords[Job](s.store, "jobs", "status", "active")
 	if err != nil {
 		return
 	}
@@ -116,13 +123,27 @@ func (s *Service) tickJobs(now time.Time) {
 		}
 		if job.RunID != "" {
 			var run Run
-			if s.store.get("runs", job.RunID, &run) == nil && run.Status == "running" {
+			previousError := job.LastError
+			err := s.store.get("runs", job.RunID, &run)
+			if err == nil && run.Status == "running" {
 				continue
 			}
+			job.LastError = run.Error
+			if err != nil {
+				job.LastError = "associated run is unavailable"
+			} else if run.Status != "completed" && job.LastError == "" {
+				job.LastError = "run ended with status " + run.Status
+			}
 			if job.Cron == "" {
-				job.Status = "completed"
+				job.Status = run.Status
+				if err != nil || job.Status == "" {
+					job.Status = "failed"
+				}
 				_ = s.store.put("jobs", job.ID, job)
 				continue
+			}
+			if job.LastError != previousError {
+				_ = s.store.put("jobs", job.ID, job)
 			}
 		}
 		if job.NextAt.After(now) {

@@ -85,7 +85,7 @@ func Setup(cfg *config.Config, db *gorm.DB, rdb *redis.Client) *gin.Engine {
 	r.GET("/", homePage)
 	article.Register(r, db, cfg.JWT.SecretKey, cfg.BlogOwnerUserID, cfg.SiteURL)
 
-	if err := agent.RegisterFromEnv(r); err != nil {
+	if err := agent.RegisterFromEnv(r, trustedProxies...); err != nil {
 		slog.Error("agent initialization failed; agent endpoints disabled", "error", err)
 	}
 

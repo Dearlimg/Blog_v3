@@ -17,6 +17,7 @@ services:
       JWT_EXPIRE: ${JWT_EXPIRE:-7200}
       SITE_URL: ${SITE_URL:-}
       TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
+      AGENT_RETENTION_DAYS: ${AGENT_RETENTION_DAYS:-90}
       BLOG_OWNER_USER_ID: ${BLOG_OWNER_USER_ID:-0}
     depends_on:
       mysql:

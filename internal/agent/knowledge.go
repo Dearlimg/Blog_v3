@@ -79,7 +79,7 @@ type Memory struct {
 }
 
 func (s *Service) recall(principal, query string) []Memory {
-	items, err := records[Memory](s.store, "memory")
+	items, err := indexedRecords[Memory](s.store, "memory", "principal", principal)
 	if err != nil {
 		return []Memory{}
 	}

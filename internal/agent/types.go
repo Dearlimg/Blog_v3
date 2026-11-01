@@ -17,6 +17,7 @@ var (
 )
 
 type Message struct {
+	Internal   bool       `json:"internal,omitempty"`
 	Role       string     `json:"role"`
 	Content    string     `json:"content,omitempty"`
 	ToolCalls  []ToolCall `json:"tool_calls,omitempty"`
@@ -93,14 +94,15 @@ type Source struct {
 }
 
 type Approval struct {
-	ID        string          `json:"id"`
-	Principal string          `json:"principal"`
-	SessionID string          `json:"session_id"`
-	Tool      string          `json:"tool"`
-	Arguments json.RawMessage `json:"arguments"`
-	Status    string          `json:"status"`
-	Result    string          `json:"result,omitempty"`
-	CreatedAt time.Time       `json:"created_at"`
+	ReceiptRecorded bool            `json:"receipt_recorded"`
+	ID              string          `json:"id"`
+	Principal       string          `json:"principal"`
+	SessionID       string          `json:"session_id"`
+	Tool            string          `json:"tool"`
+	Arguments       json.RawMessage `json:"arguments"`
+	Status          string          `json:"status"`
+	Result          string          `json:"result,omitempty"`
+	CreatedAt       time.Time       `json:"created_at"`
 }
 
 type Budget struct {

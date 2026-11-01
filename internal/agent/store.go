@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -29,7 +30,7 @@ func OpenStore(path string) (*Store, error) {
 				return err
 			}
 		}
-		return nil
+		return initializeIndexes(tx)
 	})
 	if err != nil {
 		_ = db.Close()
@@ -57,7 +58,98 @@ func writeRecord(tx *bolt.Tx, bucket, id string, value any) error {
 	if err != nil {
 		return err
 	}
-	return tx.Bucket([]byte(bucket)).Put([]byte(id), data)
+	if err := indexRecord(tx, bucket, id, tx.Bucket([]byte(bucket)).Get([]byte(id)), false); err != nil {
+		return err
+	}
+	if err := tx.Bucket([]byte(bucket)).Put([]byte(id), data); err != nil {
+		return err
+	}
+	return indexRecord(tx, bucket, id, data, true)
+}
+
+var indexedBuckets = []string{
+	"sessions", "runs", "memory", "notes", "todos", "tasks", "jobs",
+	"teams", "mail", "workflows", "approvals", "artifacts", "limits",
+}
+
+var indexFields = []string{"principal", "session_id", "status", "to"}
+
+func initializeIndexes(tx *bolt.Tx) error {
+	meta, err := tx.CreateBucketIfNotExists([]byte("schema"))
+	if err != nil {
+		return err
+	}
+	if bytes.Equal(meta.Get([]byte("indexes")), []byte("1")) {
+		return nil
+	}
+	for _, bucket := range indexedBuckets {
+		for _, field := range append([]string{"updated"}, indexFields...) {
+			if _, err := tx.CreateBucketIfNotExists([]byte(bucket + "." + field)); err != nil {
+				return err
+			}
+		}
+		if err := tx.Bucket([]byte(bucket)).ForEach(func(key, data []byte) error {
+			return indexRecord(tx, bucket, string(key), data, true)
+		}); err != nil {
+			return err
+		}
+	}
+	return meta.Put([]byte("indexes"), []byte("1"))
+}
+
+func indexRecord(tx *bolt.Tx, bucket, id string, data []byte, add bool) error {
+	fields := map[string]json.RawMessage{}
+	if len(data) > 0 && bucket != "limits" {
+		if err := json.Unmarshal(data, &fields); err != nil {
+			return err
+		}
+	}
+	for _, field := range indexFields {
+		var value string
+		if json.Unmarshal(fields[field], &value) != nil || value == "" {
+			continue
+		}
+		index := tx.Bucket([]byte(bucket + "." + field))
+		key := []byte(value + "\x00" + id)
+		var err error
+		if add {
+			err = index.Put(key, []byte(id))
+		} else {
+			err = index.Delete(key)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	updated := tx.Bucket([]byte(bucket + ".updated"))
+	if add {
+		return updated.Put([]byte(id), []byte(time.Now().UTC().Format(time.RFC3339Nano)))
+	}
+	return updated.Delete([]byte(id))
+}
+
+func deleteStoredRecord(tx *bolt.Tx, bucket, id string) error {
+	if err := indexRecord(tx, bucket, id, tx.Bucket([]byte(bucket)).Get([]byte(id)), false); err != nil {
+		return err
+	}
+	return tx.Bucket([]byte(bucket)).Delete([]byte(id))
+}
+
+func indexedRecords[T any](s *Store, bucket, field, value string) ([]T, error) {
+	items := []T{}
+	err := s.db.View(func(tx *bolt.Tx) error {
+		cursor := tx.Bucket([]byte(bucket + "." + field)).Cursor()
+		prefix := []byte(value + "\x00")
+		for key, id := cursor.Seek(prefix); bytes.HasPrefix(key, prefix); key, id = cursor.Next() {
+			var item T
+			if err := readRecord(tx, bucket, string(id), &item); err != nil {
+				return err
+			}
+			items = append(items, item)
+		}
+		return nil
+	})
+	return items, err
 }
 
 func (s *Store) put(bucket, id string, value any) error {

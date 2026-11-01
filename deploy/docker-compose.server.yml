@@ -11,6 +11,8 @@ services:
           - blog-front
     environment:
       SERVER_PORT: "8080"
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
+      AGENT_RETENTION_DAYS: ${AGENT_RETENTION_DAYS:-90}
       DB_HOST: mysql
       DB_PORT: "3306"
       DB_USER: root

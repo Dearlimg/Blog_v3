@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"strings"
 	"sync"
 	"time"
@@ -22,19 +23,20 @@ type HookEvent struct {
 type Hook func(context.Context, HookEvent) error
 
 type Service struct {
-	cfg     Config
-	store   *Store
-	model   Model
-	web     Searcher
-	hooks   []Hook
-	tools   map[string]Tool
-	mu      sync.Mutex
-	cancels map[string]context.CancelFunc
-	slots   chan struct{}
-	ctx     context.Context
-	cancel  context.CancelFunc
-	wg      sync.WaitGroup
-	mcp     *MCPRegistry
+	cfg            Config
+	store          *Store
+	model          Model
+	web            Searcher
+	hooks          []Hook
+	tools          map[string]Tool
+	mu             sync.Mutex
+	cancels        map[string]context.CancelFunc
+	slots          chan struct{}
+	ctx            context.Context
+	cancel         context.CancelFunc
+	wg             sync.WaitGroup
+	mcp            *MCPRegistry
+	trustedProxies []*net.IPNet
 }
 
 type Execution struct {
@@ -49,6 +51,13 @@ type Execution struct {
 }
 
 func NewService(cfg Config, model Model) (*Service, error) {
+	trusted, err := parseTrustedProxies(cfg.TrustedProxies)
+	if err != nil {
+		return nil, err
+	}
+	if cfg.RetentionDays == 0 {
+		cfg.RetentionDays = 90
+	}
 	store, err := OpenStore(cfg.DataPath)
 	if err != nil {
 		return nil, err
@@ -58,7 +67,13 @@ func NewService(cfg Config, model Model) (*Service, error) {
 		hooks: []Hook{}, tools: toolRegistry(), cancels: map[string]context.CancelFunc{},
 		slots: make(chan struct{}, cfg.Concurrency), ctx: ctx, cancel: cancel}
 	s.mcp = newMCPRegistry(cfg.MCPConfig)
+	s.trustedProxies = trusted
 	if err := s.recover(); err != nil {
+		_ = store.Close()
+		cancel()
+		return nil, err
+	}
+	if err := store.prune(time.Now().UTC(), cfg.RetentionDays); err != nil {
 		_ = store.Close()
 		cancel()
 		return nil, err
@@ -77,30 +92,95 @@ func (s *Service) Close() error {
 
 func (s *Service) recover() error {
 	return s.store.db.Update(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket([]byte("runs"))
-		if err := bucket.ForEach(func(k, v []byte) error {
-			var run Run
-			if err := json.Unmarshal(v, &run); err != nil {
-				return err
-			}
+		if err := recoverRecords(tx, "runs", func(run *Run) bool {
 			if run.Status != "running" {
-				return nil
+				return false
 			}
 			run.Status = "interrupted"
 			run.Error = "Server restarted. Resume with a new message."
-			return writeRecord(tx, "runs", string(k), run)
+			run.UpdatedAt = time.Now().UTC()
+			return true
 		}); err != nil {
 			return err
 		}
-		return tx.Bucket([]byte("sessions")).ForEach(func(k, v []byte) error {
-			var session Session
-			if err := json.Unmarshal(v, &session); err != nil {
-				return err
+		if err := recoverRecords(tx, "sessions", func(session *Session) bool {
+			if session.ActiveRun == "" {
+				return false
 			}
 			session.ActiveRun = ""
-			return writeRecord(tx, "sessions", string(k), session)
-		})
+			return true
+		}); err != nil {
+			return err
+		}
+		if err := recoverRecords(tx, "teams", func(team *Team) bool {
+			if team.Status != "running" {
+				return false
+			}
+			team.Status = "idle"
+			return true
+		}); err != nil {
+			return err
+		}
+		if err := recoverRecords(tx, "workflows", func(wf *Workflow) bool {
+			if wf.Status != "running" {
+				return false
+			}
+			wf.Status = "interrupted"
+			wf.UpdatedAt = time.Now().UTC()
+			return true
+		}); err != nil {
+			return err
+		}
+		interrupted := []Approval{}
+		if err := recoverRecords(tx, "approvals", func(approval *Approval) bool {
+			if approval.Status != "executing" {
+				return false
+			}
+			// The external side effect may have completed before its receipt was saved.
+			// Never replay it automatically or offer another approval for this action.
+			approval.Status = "interrupted"
+			approval.Result = toolJSON(map[string]string{
+				"error": "Server restarted during execution. Outcome unknown; verify the target system before requesting another action.",
+			})
+			interrupted = append(interrupted, *approval)
+			return true
+		}); err != nil {
+			return err
+		}
+		for _, approval := range interrupted {
+			if err := recordApprovalReceipt(tx, &approval); err != nil {
+				return err
+			}
+			if err := writeRecord(tx, "approvals", approval.ID, approval); err != nil {
+				return err
+			}
+		}
+		return nil
 	})
+}
+
+// Finish iteration before updating a bucket; writes may rebalance its pages.
+func recoverRecords[T any](tx *bolt.Tx, bucket string, change func(*T) bool) error {
+	updates := map[string]T{}
+	err := tx.Bucket([]byte(bucket)).ForEach(func(key, value []byte) error {
+		var item T
+		if err := json.Unmarshal(value, &item); err != nil {
+			return err
+		}
+		if change(&item) {
+			updates[string(key)] = item
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	for id, item := range updates {
+		if err := writeRecord(tx, bucket, id, item); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *Service) hook(ctx context.Context, event HookEvent) error {
