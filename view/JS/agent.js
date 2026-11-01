@@ -9,11 +9,11 @@ import 'highlight.js/styles/github.css';
   try { state.sessions = JSON.parse(localStorage.getItem('durlim-agent-sessions') || '[]').slice(0, 20); } catch {}
   const welcome = $('welcome').cloneNode(true);
 
-  async function api(path, body, owner = state.owner) {
+  async function api(path, body, owner = state.owner, method = body === undefined ? 'GET' : 'POST') {
     const headers = { 'Content-Type': 'application/json' };
     if (owner) headers.Authorization = 'Bearer ' + owner;
     const response = await fetch('/api/v1/agent' + path, {
-      method: body === undefined ? 'GET' : 'POST', headers,
+      method, headers,
       body: body === undefined ? undefined : JSON.stringify(body), credentials: 'same-origin',
       signal: AbortSignal.timeout(20000),
     });
@@ -74,7 +74,14 @@ import 'highlight.js/styles/github.css';
       article.append(list);
     }
   }
-  function busy(value) { $('send').hidden = value; $('cancel').hidden = !value; $('cancel').disabled = false; $('new-chat').disabled = value; $('prompt').disabled = value; $('chat-form').setAttribute('aria-busy', String(value)); }
+  function busy(value) {
+    $('send').hidden = value; $('cancel').hidden = !value; $('cancel').disabled = false;
+    $('new-chat').disabled = value; $('prompt').disabled = value && !state.run;
+    $('run-controls').hidden = !value || !state.run;
+    $('goal-mode').disabled = value; $('goal').disabled = value;
+    $('prompt').placeholder = value && state.run ? '可以补充方向，或排队追问…' : '有什么想聊的？';
+    $('chat-form').setAttribute('aria-busy', String(value));
+  }
   function listSessions() {
     $('sessions').replaceChildren();
     if (state.owner) return;
@@ -150,7 +157,7 @@ import 'highlight.js/styles/github.css';
     heading.append(label, meta);
     const timeline = document.createElement('div'); timeline.className = 'run-timeline';
     section.append(heading, timeline); $('conversation').append(section);
-    const view = { section, label, meta, timeline, cursor: 0, tools: new Map(), messages: new Map(), steps: new Map(), lastMessage: null, done: false, renderTimer: null };
+    const view = { id, section, label, meta, timeline, cursor: 0, tools: new Map(), inputs: new Map(), messages: new Map(), steps: new Map(), lastMessage: null, done: false, renderTimer: null };
     state.views.set(id, view); followOutput(); return view;
   }
   function renderTodos(items) {
@@ -170,9 +177,15 @@ import 'highlight.js/styles/github.css';
     followOutput();
   }
   function applyEvent(view, event) {
-    if (event.type === 'model_start') {
+    if (event.type === 'GoalCheckStart') {
+      view.label.textContent = '正在验收目标…';
+    } else if (event.type === 'turn_start' && event.agent === 'lead') {
+      view.meta.textContent = '第 ' + event.turn + ' 轮';
+    } else if (event.type.startsWith('input_')) {
+      renderInput(view, { id: event.input_id, mode: event.mode, content: event.text, status: event.status });
+    } else if (event.type === 'model_start') {
       const row = document.createElement('div'); row.className = 'model-step pending';
-      row.textContent = event.agent && event.agent !== 'lead' ? event.agent + ' · 正在处理' : '正在思考…';
+      row.textContent = event.agent && event.agent !== 'lead' ? event.agent + ' · 正在处理' : (event.turn ? '第 ' + event.turn + ' 轮 · ' : '') + '正在思考…';
       view.timeline.append(row); view.steps.set(event.message_id, row); view.label.textContent = row.textContent;
     } else if (event.type === 'assistant_delta') {
       let item = view.messages.get(event.message_id);
@@ -190,12 +203,15 @@ import 'highlight.js/styles/github.css';
       const summary = document.createElement('summary');
       const title = document.createElement('span'); title.className = 'tool-name'; title.textContent = toolLabels[event.tool] || event.tool;
       const code = document.createElement('code'); code.textContent = event.tool;
-      const badge = document.createElement('span'); badge.className = 'tool-status'; badge.textContent = '执行中';
+      const badge = document.createElement('span'); badge.className = 'tool-status'; badge.textContent = event.status === 'preparing' ? '校验 / 排队中' : '执行中';
       summary.append(title, code, badge); details.append(summary);
       const input = document.createElement('pre'); input.className = 'tool-input'; input.textContent = pretty(event.arguments);
       const inputLabel = document.createElement('div'); inputLabel.className = 'tool-detail-label'; inputLabel.textContent = '调用参数' + (event.agent !== 'lead' && event.agent ? ' · ' + event.agent : '');
       details.append(inputLabel, input); view.timeline.append(details);
       view.tools.set(event.call_id, { details, badge }); view.label.textContent = title.textContent + '…';
+    } else if (event.type === 'tool_update') {
+      const tool = view.tools.get(event.call_id);
+      if (tool) tool.badge.textContent = '执行中';
     } else if (event.type === 'tool_end') {
       const tool = view.tools.get(event.call_id);
       if (tool) {
@@ -206,9 +222,9 @@ import 'highlight.js/styles/github.css';
         tool.details.append(label, result);
       }
       if (event.tool === 'todo_write' && event.status === 'completed') { try { renderTodos(JSON.parse(event.result).items || []); } catch {} }
-    } else if (['GoalCheck', 'ContextCompact'].includes(event.type)) {
+    } else if (['GoalCheck', 'ContextCompact', 'HookWarning'].includes(event.type)) {
       const row = document.createElement('div'); row.className = 'model-step';
-      row.textContent = (event.type === 'GoalCheck' ? '目标验收 · ' : '已整理上下文 · ') + event.text;
+      row.textContent = ({ GoalCheck: '目标验收 · ', ContextCompact: '已整理上下文 · ', HookWarning: '执行提示 · ' }[event.type]) + event.text;
       view.timeline.append(row);
     }
     followOutput();
@@ -216,6 +232,7 @@ import 'highlight.js/styles/github.css';
   function finishView(view, run) {
     if (view.done) return;
     view.done = true; renderPending(view, true);
+    (run.inputs || []).forEach(item => renderInput(view, item));
     view.section.classList.remove('running'); view.section.dataset.status = run.status;
     view.label.textContent = statusLabels[run.status] || run.status;
     const elapsed = Math.max(0, (Date.parse(run.updated_at) - Date.parse(run.created_at)) / 1000);
@@ -238,7 +255,50 @@ import 'highlight.js/styles/github.css';
     if (!view.tools.size && !view.lastMessage && !run.error) { const hint = document.createElement('p'); hint.className = 'model-step'; hint.textContent = '本次任务未调用工具。'; view.timeline.append(hint); }
     followOutput();
   }
+  function renderInput(view, item) {
+    let row = view.inputs.get(item.id);
+    if (row && item.status === 'pending' && row.status !== 'pending') return;
+    if (!row) {
+      const box = document.createElement('div'); box.className = 'queued-input';
+      const label = document.createElement('span'); label.className = 'input-status';
+      const content = document.createElement('div'); content.className = 'input-content';
+      const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = '移除';
+      remove.addEventListener('click', async () => {
+        const epoch = state.epoch, owner = state.owner; remove.disabled = true;
+        try {
+          await api('/runs/' + view.id + '/inputs/' + encodeURIComponent(item.id), undefined, owner, 'DELETE');
+          if (epoch === state.epoch) renderInput(view, { ...item, status: 'removed' });
+        } catch (error) { if (epoch === state.epoch) { status(error.message, true); remove.disabled = false; } }
+      });
+      box.append(label, content, remove); view.timeline.append(box);
+      row = { box, label, content, remove }; view.inputs.set(item.id, row);
+    }
+    row.label.textContent = (item.mode === 'steer' ? '补充指令' : '排队追问') + ' · ' + ({ pending: '等待处理', delivered: '已加入上下文', removed: '已移除', unprocessed: '本次未处理' }[item.status] || item.status);
+    row.content.textContent = item.content; row.box.dataset.status = item.status;
+    row.status = item.status;
+    row.remove.hidden = item.status !== 'pending' || view.done; row.remove.disabled = false;
+  }
+  let pendingInput = null, queueSubmitting = false;
+  async function queueMessage(text) {
+    if (queueSubmitting) return;
+    const id = state.run, epoch = state.epoch, owner = state.owner, mode = $('input-mode').value;
+    if (!pendingInput || pendingInput.run !== id || pendingInput.message !== text || pendingInput.mode !== mode) {
+      pendingInput = { run: id, id: crypto.randomUUID(), message: text, mode };
+    }
+    const request = pendingInput; queueSubmitting = true; $('queue-input').disabled = true;
+    try {
+      const item = await api('/runs/' + id + '/inputs', { id: request.id, message: text, mode }, owner);
+      if (epoch !== state.epoch) return;
+      if (state.run === id) renderInput(runView(id), item);
+      if ($('prompt').value.trim() === text) { $('prompt').value = ''; resizePrompt(); }
+      pendingInput = null;
+      if (state.run === id) status(item.status === 'delivered' ? '补充指令已加入上下文。' : '已排队；可在执行时间线中移除。');
+      else status('补充消息已记录，处理状态见执行时间线。');
+    } catch (error) { if (epoch === state.epoch) status(error.message, true); }
+    finally { if (epoch === state.epoch) { queueSubmitting = false; $('queue-input').disabled = false; } }
+  }
   function resetTransport() {
+    pendingInput = null; queueSubmitting = false; $('queue-input').disabled = false;
     clearTimeout(state.pollTimer); state.pollTimer = null;
     state.stream?.abort(); state.stream = null;
     for (const view of state.views.values()) clearTimeout(view.renderTimer);
@@ -302,8 +362,9 @@ import 'highlight.js/styles/github.css';
     } finally { clearTimeout(idleTimer); if (state.stream === controller) state.stream = null; }
   }
   $('chat-form').addEventListener('submit', async event => {
-    event.preventDefault(); if (state.run) return;
+    event.preventDefault();
     const text = $('prompt').value.trim(); if (!text) return;
+    if (state.run) { await queueMessage(text); return; }
     const epoch = state.epoch, owner = state.owner;
     busy(true);
     try {
@@ -321,7 +382,7 @@ import 'highlight.js/styles/github.css';
         api('/runs/' + result.run_id + '/cancel', {}, owner).catch(() => {});
         return;
       }
-      state.follow = true; message('user', text); $('prompt').value = ''; resizePrompt(); state.run = result.run_id; watch(state.run, state.epoch);
+      state.follow = true; message('user', text); $('prompt').value = ''; resizePrompt(); state.run = result.run_id; busy(true); watch(state.run, state.epoch);
     } catch (error) { if (epoch !== state.epoch) return; busy(false); status(error.message, true); }
   });
   $('cancel').addEventListener('click', async () => { if (!state.run) return; $('cancel').disabled = true; try { await api('/runs/' + state.run + '/cancel', {}); status('正在停止…'); } catch (e) { status(e.message, true); $('cancel').disabled = false; } });

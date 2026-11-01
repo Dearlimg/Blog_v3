@@ -6,8 +6,8 @@
   <meta name="referrer" content="no-referrer">
   <title>与 Durlim 聊聊</title>
   <link rel="icon" href="/static/Ava.jpg">
-  <link rel="stylesheet" href="/static/agent-build/agent.css?v=20261101">
-  <link rel="stylesheet" href="/view/css/agent.css?v=20261101">
+  <link rel="stylesheet" href="/static/agent-build/agent.css?v=20261101-pi">
+  <link rel="stylesheet" href="/view/css/agent.css?v=20261101-pi">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
@@ -27,11 +27,11 @@
       <button id="jump-bottom" type="button" hidden>↓ 回到最新输出</button>
       <details id="activity" open hidden><summary>任务计划</summary><ul id="todos"></ul></details>
       <div id="approvals"></div>
-      <form id="chat-form"><textarea id="prompt" rows="2" maxlength="8000" placeholder="有什么想聊的？" aria-label="消息" required></textarea><div class="composer-footer"><label><input id="goal-mode" type="checkbox"> 目标验收</label><button id="send" class="send icon" title="发送消息" aria-label="发送消息"><i class="fas fa-arrow-up" aria-hidden="true"></i></button><button id="cancel" class="icon" type="button" title="停止生成" aria-label="停止生成" hidden><i class="fas fa-stop" aria-hidden="true"></i></button></div><input id="goal" maxlength="2000" placeholder="完成标准，例如：计划覆盖网络、数据库与 Go，并给出可检查的每日任务" aria-label="目标完成标准" hidden></form>
+      <form id="chat-form"><textarea id="prompt" rows="2" maxlength="8000" placeholder="有什么想聊的？" aria-label="消息" required></textarea><div class="composer-footer"><label><input id="goal-mode" type="checkbox"> 目标验收</label><div id="run-controls" hidden><select id="input-mode" aria-label="补充指令的执行时机"><option value="steer">下一轮补充</option><option value="follow_up">完成后追问</option></select><button id="queue-input" type="submit">加入队列</button></div><button id="send" class="send icon" title="发送消息" aria-label="发送消息"><i class="fas fa-arrow-up" aria-hidden="true"></i></button><button id="cancel" class="icon" type="button" title="停止生成" aria-label="停止生成" hidden><i class="fas fa-stop" aria-hidden="true"></i></button></div><input id="goal" maxlength="2000" placeholder="完成标准，例如：计划覆盖网络、数据库与 Go，并给出可检查的每日任务" aria-label="目标完成标准" hidden></form>
       <p class="privacy">Enter 发送 · Shift + Enter 换行 · 回答可能有误，请核对引用来源。</p>
     </div>
   </main>
   <dialog id="owner-dialog"><form method="dialog" class="dialog-header"><h2>主人工作台</h2><button class="icon" aria-label="关闭" title="关闭"><i class="fas fa-xmark" aria-hidden="true"></i></button></form><form id="owner-login"><label>主人令牌<input id="owner-token" type="password" autocomplete="off" required></label><button>连接</button></form><p id="owner-status" role="status"></p><section id="owner-tools" hidden><div class="owner-row"><button id="owner-refresh">刷新状态</button><button id="owner-logout">退出工作台</button></div><form id="job-form"><label>任务<textarea id="job-prompt" required maxlength="8000"></textarea></label><label>Cron<input id="job-cron" placeholder="留空表示后台执行；例如 0 9 * * 1-5"></label><button>创建任务</button></form><div id="owner-jobs"></div></section></dialog>
-  <script src="/static/agent-build/agent.js?v=20261101" defer></script>
+  <script src="/static/agent-build/agent.js?v=20261101-pi" defer></script>
 </body>
 </html>

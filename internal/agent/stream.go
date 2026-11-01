@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -24,12 +25,40 @@ func (s *Service) recordEvent(runID string, event Event) error {
 	err := updateRecord(s.store, "runs", runID, func(run *Run) error {
 		run.Events = append(run.Events, event)
 		run.UpdatedAt = event.At
+		updateRunState(run, event)
 		return nil
 	})
 	if err == nil {
 		s.notifyRun(runID)
 	}
 	return err
+}
+
+func updateRunState(run *Run, event Event) {
+	if run.PendingTools == nil {
+		run.PendingTools = []string{}
+	}
+	switch event.Type {
+	case "tool_start":
+		run.PendingTools = append(run.PendingTools, event.CallID)
+		run.Phase = "tools"
+	case "tool_end":
+		run.PendingTools = slices.DeleteFunc(run.PendingTools, func(id string) bool { return id == event.CallID })
+		if len(run.PendingTools) == 0 {
+			run.Phase = "thinking"
+		}
+	case "turn_start":
+		if event.Agent == "lead" {
+			run.Turns = event.Turn
+			run.Phase = "thinking"
+		}
+	case "assistant_delta":
+		run.Phase = "responding"
+	case "agent_start":
+		run.Phase = "thinking"
+	case "GoalCheckStart":
+		run.Phase = "verifying"
+	}
 }
 
 func (s *Service) notifyRun(id string) {
@@ -153,7 +182,7 @@ func (s *Service) runEvents(c *gin.Context) {
 
 func (s *Service) completeTurn(ctx context.Context, ex *Execution, input []Message) (Message, error) {
 	messageID := newID()
-	_ = s.recordEvent(ex.RunID, Event{Type: "model_start", Agent: ex.Agent, MessageID: messageID})
+	_ = s.recordEvent(ex.RunID, Event{Type: "model_start", Agent: ex.Agent, MessageID: messageID, Turn: ex.Turn})
 	started := time.Now()
 	var result Completion
 	var err error
@@ -170,7 +199,7 @@ func (s *Service) completeTurn(ctx context.Context, ex *Execution, input []Messa
 					return
 				}
 				_ = s.recordEvent(ex.RunID, Event{
-					Type: "assistant_delta", MessageID: messageID, Agent: ex.Agent, Text: pending.String(),
+					Type: "assistant_delta", MessageID: messageID, Agent: ex.Agent, Text: pending.String(), Turn: ex.Turn,
 				})
 				pending.Reset()
 				lastFlush = time.Now()
@@ -195,7 +224,7 @@ func (s *Service) completeTurn(ctx context.Context, ex *Execution, input []Messa
 		result.Message, err = s.complete(ctx, ex, input, s.definitions(ex))
 		if err == nil && ex.Depth == 0 && result.Message.Content != "" {
 			_ = s.recordEvent(ex.RunID, Event{
-				Type: "assistant_delta", MessageID: messageID, Agent: ex.Agent, Text: result.Message.Content,
+				Type: "assistant_delta", MessageID: messageID, Agent: ex.Agent, Text: result.Message.Content, Turn: ex.Turn,
 			})
 		}
 	}
@@ -205,7 +234,7 @@ func (s *Service) completeTurn(ctx context.Context, ex *Execution, input []Messa
 	}
 	_ = s.recordEvent(ex.RunID, Event{
 		Type: "model_end", MessageID: messageID, Agent: ex.Agent, Status: status,
-		DurationMS: time.Since(started).Milliseconds(),
+		DurationMS: time.Since(started).Milliseconds(), Turn: ex.Turn,
 	})
 	result.Message.Content = s.cfg.redact(result.Message.Content)
 	return result.Message, err

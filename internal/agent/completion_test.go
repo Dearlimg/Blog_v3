@@ -59,7 +59,7 @@ func TestArtifactPagesReadEntireUnicodeResult(t *testing.T) {
 	offset := 0
 	for range 100 {
 		result := s.execute(context.Background(), ex, ToolCall{Function: FunctionCall{
-			Name: "artifact_read", Arguments: toolJSON(Args{ID: id, Offset: offset}),
+			Name: "artifact_read", Arguments: toolJSON(map[string]any{"id": id, "offset": offset}),
 		}}, false)
 		var page struct {
 			Content string `json:"content"`

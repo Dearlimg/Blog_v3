@@ -23,10 +23,12 @@ async function fixture(t, mode = 'normal') {
   let release;
   const gate = new Promise(resolve => { release = resolve; });
   let completed = false, cancelled = false;
+  const queued = [], queueEvents = [], queueRequests = [];
+  let emitActivity;
   const cursors = [], auth = [], errors = [];
-  const run = () => ({ id: 'run', prompt: '讲解 Linux 内存管理', status: completed ? cancelled ? 'cancelled' : 'completed' : 'running', answer: completed && !cancelled ? answer : '', error: cancelled ? 'context canceled' : '', events: completed ? allEvents() : initial, sources: [{ title: 'Linux 官方文档', url: 'https://example.com/docs' }], calls: 2, created_at: created, updated_at: '2026-11-01T08:00:04Z' });
+  const run = () => ({ id: 'run', prompt: '讲解 Linux 内存管理', status: completed ? cancelled ? 'cancelled' : 'completed' : 'running', answer: completed && !cancelled ? answer : '', error: cancelled ? 'context canceled' : '', events: completed ? allEvents() : [...initial, ...queueEvents], inputs: queued.map(item => ({ ...item, status: completed && item.status === 'pending' ? 'unprocessed' : item.status })), sources: [{ title: 'Linux 官方文档', url: 'https://example.com/docs' }], calls: 2, created_at: created, updated_at: '2026-11-01T08:00:04Z' });
   function allEvents() {
-    return [...initial, event('assistant_delta', { message_id: 'm2', text: answer.slice('## Linux 内存管理\n\n'.length) }), event('model_end', { message_id: 'm2', status: 'completed', duration_ms: 1800 })];
+    return [...initial, ...queueEvents, event('assistant_delta', { message_id: 'm2', text: answer.slice('## Linux 内存管理\n\n'.length) }), event('model_end', { message_id: 'm2', status: 'completed', duration_ms: 1800 })];
   }
   const server = createServer(async (req, res) => {
     const url = new URL(req.url, 'http://localhost');
@@ -35,6 +37,22 @@ async function fixture(t, mode = 'normal') {
     if (url.pathname === '/api/v1/agent/owner/state') return json({ jobs: [] });
     if (url.pathname === '/api/v1/agent/sessions' && req.method === 'POST') return json({ id: 'session' });
     if (url.pathname.endsWith('/messages')) return json({ run_id: 'run' });
+    if (url.pathname.endsWith('/inputs') && req.method === 'POST') {
+      let body = ''; for await (const chunk of req) body += chunk;
+      const input = JSON.parse(body); queueRequests.push(input);
+      let item = queued.find(item => item.id === input.id);
+      if (!item) {
+        item = { id: input.id, content: input.message, mode: input.mode, status: 'pending' }; queued.push(item);
+        const activity = event('input_queued', { input_id: item.id, mode: item.mode, status: 'pending', text: item.content });
+        queueEvents.push(activity); await emitActivity(activity);
+      }
+      return json(item, 202);
+    }
+    if (url.pathname.includes('/inputs/') && req.method === 'DELETE') {
+      const item = queued.find(item => item.id === url.pathname.split('/').at(-1)); item.status = 'removed';
+      const activity = event('input_removed', { input_id: item.id, mode: item.mode, status: 'removed', text: item.content });
+      queueEvents.push(activity); await emitActivity(activity); return json({ status: 'removed' });
+    }
     if (url.pathname.endsWith('/cancel')) { cancelled = true; completed = true; release(); return json({ status: 'cancellation_requested' }); }
     if (url.pathname === '/api/v1/agent/runs/run') return json(run());
     if (url.pathname === '/api/v1/agent/sessions/session') return json({ id: 'session', messages: [], active_run: '', approvals: [], todos: [], runs: completed ? [run()] : [] });
@@ -49,12 +67,14 @@ async function fixture(t, mode = 'normal') {
       };
       await send('run', { id: 'run', status: 'running' });
       for (let i = cursor; i < initial.length; i++) await send('activity', initial[i], i + 1);
+      let sequence = initial.length;
+      emitActivity = data => send('activity', data, ++sequence);
       if (mode === 'reconnect' && cursor === 0) { res.end(); return; }
       await gate;
       if (res.destroyed) return;
       completed = true;
       if (!cancelled) {
-        for (let i = initial.length; i < allEvents().length; i++) await send('activity', allEvents()[i], i + 1);
+        for (let i = initial.length + queueEvents.length; i < allEvents().length; i++) await send('activity', allEvents()[i], i + 1);
       }
       await send('done', { ...run(), events: [] }); res.end(); return;
     }
@@ -85,7 +105,7 @@ async function fixture(t, mode = 'normal') {
   }
   await page.locator('#prompt').fill('讲解 Linux 内存管理'); await page.locator('#send').click();
   await page.locator('.body h2').waitFor();
-  return { page, release, cursors, auth, errors };
+  return { page, release, cursors, auth, errors, queueRequests };
 }
 
 test('live SSE shows real tools and formatted text before completion; history retains trace', async t => {
@@ -97,7 +117,7 @@ test('live SSE shows real tools and formatted text before completion; history re
   assert.match(await page.locator('.tool-result').first().innerText(), /Linux docs/);
   assert.match(await page.locator('.tool-event[data-status=failed]').innerText(), /执行失败/);
   release();
-  await page.waitForFunction(() => !document.querySelector('#prompt').disabled);
+  await page.waitForFunction(() => document.querySelector('#cancel').hidden);
   assert.equal(await page.locator('.body table tbody tr').count(), 2);
   assert.equal((await page.locator('.body pre code').innerText()).trimEnd(), 'fmt.Println("hello")');
   assert.equal(await page.locator('.copy-code').count(), 1);
@@ -129,7 +149,7 @@ test('SSE reconnect resumes cursor without duplicating tool cards or text', asyn
   await new Promise(resolve => setTimeout(resolve, 1400));
   assert.deepEqual(cursors, [0, initial.length]);
   release();
-  await page.waitForFunction(() => !document.querySelector('#prompt').disabled);
+  await page.waitForFunction(() => document.querySelector('#cancel').hidden);
   assert.equal(await page.locator('.tool-event').count(), 2);
   assert.equal(await page.locator('.message.assistant').count(), 2);
   assert.equal(await page.locator('.body h2').count(), 1);
@@ -139,7 +159,7 @@ test('SSE reconnect resumes cursor without duplicating tool cards or text', asyn
 test('stopping a stream preserves partial output and restores composer', async t => {
   const { page, errors } = await fixture(t);
   await page.locator('#cancel').click();
-  await page.waitForFunction(() => !document.querySelector('#prompt').disabled);
+  await page.waitForFunction(() => document.querySelector('#cancel').hidden);
   assert.equal(await page.locator('.body h2').innerText(), 'Linux 内存管理');
   assert.match(await page.locator('.run-label').innerText(), /已停止/);
   assert.equal(await page.locator('.streaming').count(), 0);
@@ -152,6 +172,28 @@ test('owner SSE authenticates through header and keeps the token out of the URL'
   const { page, release, auth, errors } = await fixture(t, 'owner');
   assert.deepEqual(auth, ['Bearer valid']);
   release();
-  await page.waitForFunction(() => !document.querySelector('#prompt').disabled);
+  await page.waitForFunction(() => document.querySelector('#cancel').hidden);
+  assert.deepEqual(errors, []);
+});
+
+test('users can steer or queue a follow-up during streaming and remove pending input', async t => {
+  const { page, errors, queueRequests } = await fixture(t);
+  assert.equal(await page.locator('#prompt').isDisabled(), false);
+  await page.locator('#prompt').fill('重点讲解 VMA');
+  await page.locator('#queue-input').click();
+  await page.locator('.queued-input').waitFor();
+  assert.equal(queueRequests[0].mode, 'steer');
+  assert.match(await page.locator('.queued-input').first().innerText(), /补充指令.*等待处理/);
+  await page.locator('.queued-input button').first().click();
+  await page.waitForFunction(() => document.querySelector('.queued-input').dataset.status === 'removed');
+  await page.locator('#input-mode').selectOption('follow_up');
+  await page.locator('#prompt').fill('稍后给出示例');
+  await page.locator('#queue-input').click();
+  await page.waitForFunction(() => document.querySelectorAll('.queued-input').length === 2);
+  assert.equal(queueRequests[1].mode, 'follow_up');
+  await page.locator('#cancel').click();
+  await page.waitForFunction(() => document.querySelector('#cancel').hidden);
+  assert.match(await page.locator('.queued-input').last().innerText(), /本次未处理/);
+  assert.equal(await page.locator('.queued-input').last().locator('button').isVisible(), false);
   assert.deepEqual(errors, []);
 });

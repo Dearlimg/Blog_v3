@@ -13,6 +13,9 @@
 - `tool_start` / `tool_end`：用 `call_id` 关联工具名、参数、结果预览、耗时与状态。
   参数校验失败、权限失败、等待审批等提前返回路径也会记录结束事件。
 - `GoalCheck` / `ContextCompact`：验收与上下文整理状态。
+- `agent_start` / `agent_end`、`turn_start` / `turn_end`：运行与回合边界。
+- `tool_update`：工具完成参数校验并真正开始执行。
+- `input_queued` / `input_delivered` / `input_removed`：运行中补充与追问的处理状态。
 
 只有实际调用过的工具才显示工具卡片。普通问答可能直接生成回复，不会人为插入工具步骤。
 模型内部推理、验收器 JSON 和上下文摘要不会作为正文流式显示。
@@ -33,6 +36,42 @@ SSE 中断后前端先读取运行快照，再携带游标重连，不重复提�
 
 前端资源构建：`npm ci && npm run build:agent`。提交包含 `static/agent-build/` 产物，
 当前仅复制静态文件的 Docker 部署也可直接使用。
+
+## Pi 风格的后端循环
+
+设计对照、实现边界和文件导航见 [agent-pi-design.md](agent-pi-design.md)。
+每轮先处理补充指令，再整理上下文、生成回复、校验及执行工具，最后结束回合。
+工具调用和其结果之间不会插入新的用户消息。
+
+工具参数按每个工具声明的字段、必填项、类型及 Todo 状态校验；不接受其他工具的字段、
+`null` 或多个拼接的 JSON 对象。校验失败不调用执行前 Hook，也不会生成待审批操作。
+`PreToolUse` Hook 可检查已校验的参数；`PostToolUse` Hook 可查看实际结果和状态。
+后置观察失败会产生提示，保留真实回执。并行工具的 Hook 可能同时运行，Host Hook 应保证并发安全。
+
+仅当整批工具均在只读并行白名单中，才并行执行。包含任意写入、审批、团队或工作流工具时，
+整批按顺序执行。`AGENT_TOOL_CONCURRENCY` 设置服务范围的只读工具执行上限，默认为 3，
+范围 1–8；设为 1 可使用串行模式。事件反映实际完成顺序，回传给模型的结果保持原调用顺序。
+观察到取消后不再启动后续工具；工具 panic 转换为失败回执，不使工作进程崩溃。
+
+`GET /runs/:id` 增加 `phase`、`turns`、`pending_tools` 与 `inputs`，所有路径均相对于
+`/api/v1/agent`。当前页面的输入框在生成时仍可输入，并可选择“下一轮补充”或“完成后追问”。
+
+```http
+POST /api/v1/agent/runs/<run-id>/inputs
+Content-Type: application/json
+
+{"id":"client-request-id","mode":"steer","message":"重点检查边界情况"}
+```
+
+`mode=steer` 在下一次模型请求前投递；`mode=follow_up` 在当前任务自然完成并通过目标验收后投递。
+每轮最多投递一条，优先处理补充指令。它们共享原 Run 的调用、Token、步骤和时间预算。
+`id` 可省略；提供时，同一 Run 内相同 ID 与内容的重试不会重复入队。
+同一 ID 携带不同内容返回 409。每个 Run 最多接收 32 条输入，接口沿用聊天身份与限额。
+
+`DELETE /api/v1/agent/runs/<run-id>/inputs/<input-id>` 可移除仍待处理的消息。
+输入状态为 `pending`、`delivered`（已加入上下文）、`removed` 或 `unprocessed`。
+最终队列检查与结束封口位于同一事务；封口后新消息返回 409，前端保留草稿供下一次发送。
+失败、取消、预算耗尽或重启时仍在等待的消息保留为 `unprocessed`，不会自动执行。
 
 ## 反向代理和限流
 

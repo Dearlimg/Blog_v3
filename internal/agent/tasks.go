@@ -2,7 +2,6 @@ package agent
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"slices"
@@ -192,8 +191,7 @@ func (s *Service) approve(ctxEx *Execution, id string, allow bool) (Approval, er
 	defer cancel()
 	approval.Result = s.execute(ctx, ctxEx, call, true)
 	approval.Status = "approved"
-	var result map[string]json.RawMessage
-	if json.Unmarshal([]byte(approval.Result), &result) == nil && result["error"] != nil {
+	if toolResultFailed(approval.Result) {
 		approval.Status = "failed"
 	}
 	err = s.store.db.Update(func(tx *bolt.Tx) error {

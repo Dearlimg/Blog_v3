@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"net"
 	"net/http"
@@ -58,6 +59,8 @@ func (s *Service) Register(r *gin.Engine) {
 	api.POST("/sessions/:id/messages", s.chat)
 	api.GET("/runs/:id", s.runState)
 	api.GET("/runs/:id/events", s.runEvents)
+	api.POST("/runs/:id/inputs", s.queueInput)
+	api.DELETE("/runs/:id/inputs/:input", s.removeInput)
 	api.POST("/runs/:id/cancel", func(c *gin.Context) {
 		if err := s.Cancel(c.GetString("agent_principal"), c.Param("id")); err != nil {
 			agentError(c, 404, err)
@@ -287,8 +290,8 @@ func (s *Service) ownerTool(c *gin.Context) {
 		return
 	}
 	var input struct {
-		SessionID string `json:"session_id"`
-		Arguments Args   `json:"arguments"`
+		SessionID string          `json:"session_id"`
+		Arguments json.RawMessage `json:"arguments"`
 	}
 	if err := c.ShouldBindJSON(&input); err != nil {
 		agentError(c, 400, errors.New("invalid tool request"))
@@ -310,6 +313,6 @@ func (s *Service) ownerTool(c *gin.Context) {
 		return
 	}
 	ex := &Execution{Service: s, Principal: "owner", SessionID: session.ID, Owner: true, Agent: "lead"}
-	call := ToolCall{ID: newID(), Function: FunctionCall{Name: name, Arguments: toolJSON(input.Arguments)}}
+	call := ToolCall{ID: newID(), Function: FunctionCall{Name: name, Arguments: string(input.Arguments)}}
 	c.Data(200, "application/json", []byte(s.execute(c.Request.Context(), ex, call, false)))
 }

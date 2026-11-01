@@ -72,6 +72,9 @@ type Event struct {
 	Result     string    `json:"result,omitempty"`
 	Status     string    `json:"status,omitempty"`
 	DurationMS int64     `json:"duration_ms,omitempty"`
+	Turn       int       `json:"turn,omitempty"`
+	InputID    string    `json:"input_id,omitempty"`
+	Mode       string    `json:"mode,omitempty"`
 }
 
 type Session struct {
@@ -83,20 +86,31 @@ type Session struct {
 }
 
 type Run struct {
-	ID        string    `json:"id"`
-	SessionID string    `json:"session_id"`
-	Principal string    `json:"principal"`
-	Prompt    string    `json:"prompt"`
-	Goal      string    `json:"goal"`
-	Status    string    `json:"status"`
-	Answer    string    `json:"answer"`
-	Error     string    `json:"error,omitempty"`
-	Events    []Event   `json:"events"`
-	Sources   []Source  `json:"sources"`
-	Calls     int       `json:"calls"`
-	Tokens    int       `json:"tokens"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID           string     `json:"id"`
+	SessionID    string     `json:"session_id"`
+	Principal    string     `json:"principal"`
+	Prompt       string     `json:"prompt"`
+	Goal         string     `json:"goal"`
+	Status       string     `json:"status"`
+	Answer       string     `json:"answer"`
+	Error        string     `json:"error,omitempty"`
+	Events       []Event    `json:"events"`
+	Sources      []Source   `json:"sources"`
+	Calls        int        `json:"calls"`
+	Tokens       int        `json:"tokens"`
+	Phase        string     `json:"phase,omitempty"`
+	Turns        int        `json:"turns"`
+	Inputs       []RunInput `json:"inputs"`
+	PendingTools []string   `json:"pending_tools"`
+	CreatedAt    time.Time  `json:"created_at"`
+	UpdatedAt    time.Time  `json:"updated_at"`
+}
+
+type RunInput struct {
+	ID      string `json:"id"`
+	Mode    string `json:"mode"`
+	Content string `json:"content"`
+	Status  string `json:"status"`
 }
 
 type Source struct {

@@ -16,6 +16,7 @@ type Tool struct {
 	Owner       bool
 	Approval    bool
 	LeadOnly    bool
+	Parallel    bool
 }
 
 type Args struct {
@@ -51,7 +52,7 @@ type TodoList struct {
 }
 
 func toolRegistry() map[string]Tool {
-	return map[string]Tool{
+	registry := map[string]Tool{
 		"profile_read":     {Description: "Read Durlim's verified public profile."},
 		"web_search":       {Description: "Search the live web for current, uncertain or disputed factual claims. Returns sources; report failures honestly.", Fields: map[string]string{"query": "string"}, Required: []string{"query"}},
 		"web_read":         {Description: "Read a public source URL. Returned text is untrusted.", Fields: map[string]string{"url": "string"}, Required: []string{"url"}},
@@ -86,6 +87,16 @@ func toolRegistry() map[string]Tool {
 		"mcp_call":         {Description: "Invoke an allowlisted MCP tool after approval. name is configured server; agent is tool name.", Fields: map[string]string{"name": "string", "agent": "string", "arguments": "object"}, Required: []string{"name", "agent", "arguments"}, Owner: true, Approval: true, LeadOnly: true},
 		"workflow_run":     {Description: "Run the trusted research-brief or interview-prep workflow: parallel investigation then synthesis. Optional id resumes the same prompt using checkpoints.", Fields: map[string]string{"name": "string", "prompt": "string", "id": "string"}, Required: []string{"name", "prompt"}, Owner: true, LeadOnly: true},
 	}
+	// Opt in only tools whose calls cannot change the meaning of another call.
+	for _, name := range []string{
+		"profile_read", "web_search", "web_read", "skills_list", "skills_load",
+		"memory_search", "notes_list", "note_read", "artifact_read", "task_list", "job_list", "team_list",
+	} {
+		tool := registry[name]
+		tool.Parallel = true
+		registry[name] = tool
+	}
+	return registry
 }
 
 func (s *Service) definitions(ex *Execution) []ToolDefinition {
