@@ -1,5 +1,9 @@
 # GitHub Actions 的 CI/CD 配置如下，无需额外操作
 
+# ⚠️ 过时声明（2026-11-01）：本文档描述的 ghcr 推镜像 + SSH 部署 docker-compose 流程已废弃。
+# 当前部署链路：git push gitea main → Gitea Actions → natvps 编译 → aliyun 打镜像 → k3s 滚动发布（.gitea/workflows/deploy.yaml）。
+# GitHub 侧（.github/workflows/ci-cd.yml）只保留 lint + test 质量门禁。
+
 # --- Secrets 与 Variables ---
 # 在 GitHub Repo → Settings → Secrets and variables → Actions 中配置：
 
