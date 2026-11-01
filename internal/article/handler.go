@@ -167,8 +167,8 @@ func (h *Handler) PublicPage(c *gin.Context) {
 func (h *Handler) ArticleListPage(c *gin.Context) {
 	baseURL := h.baseURL(c)
 	metadata := articlePage{
-		Title:        "文章 | Durlim",
-		Description:  "Durlim 的个人博客文章与记录。",
+		Title:        "Articles | Durlim",
+		Description:  "Articles and notes on backend development, systems and learning by Durlim.",
 		CanonicalURL: baseURL + "/articles",
 		ImageURL:     baseURL + "/static/Ava.jpg",
 	}
@@ -245,8 +245,8 @@ func (h *Handler) baseURL(c *gin.Context) string {
 func (h *Handler) pageMetadata(c *gin.Context, document *PublicDocument) articlePage {
 	baseURL := h.baseURL(c)
 	page := articlePage{
-		Title:        "文章不可用 | Durlim",
-		Description:  "Durlim 的个人博客文章。",
+		Title:        "Article unavailable | Durlim",
+		Description:  "Articles and notes by Durlim.",
 		CanonicalURL: baseURL + "/articles/" + url.PathEscape(c.Param("id")),
 		ImageURL:     baseURL + "/static/Ava.jpg",
 	}
@@ -256,7 +256,7 @@ func (h *Handler) pageMetadata(c *gin.Context, document *PublicDocument) article
 
 	title := strings.TrimSpace(document.Title)
 	if title == "" {
-		title = "文章"
+		title = "Article"
 	}
 	description := strings.TrimSpace(document.Summary)
 	if description == "" {

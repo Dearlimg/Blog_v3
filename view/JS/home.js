@@ -24,6 +24,32 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   matchMedia('(min-width: 761px)').addEventListener('change', () => setMenu(false));
 
+  // Keep keyboard focus within the expanded mobile navigation and its controls.
+  document.querySelector('.site-header').addEventListener('keydown', event => {
+    if (event.key !== 'Tab' || toggle.getAttribute('aria-expanded') !== 'true') return;
+    const controls = [...document.querySelectorAll('.site-header a, .site-header button')]
+      .filter(el => el.getClientRects().length);
+    const first = controls[0], last = controls.at(-1);
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  });
+
+  const progress = document.querySelector('.scroll-progress');
+  function updateProgress() {
+    const distance = document.documentElement.scrollHeight - innerHeight;
+    progress.style.transform = `scaleX(${distance > 0 ? scrollY / distance : 0})`;
+    document.querySelector('.site-header').classList.toggle('is-scrolled', scrollY > 12);
+  }
+  addEventListener('scroll', updateProgress, { passive: true });
+  addEventListener('resize', updateProgress);
+  new ResizeObserver(updateProgress).observe(document.body);
+  updateProgress();
+
   const observer = new IntersectionObserver(entries => {
     for (const entry of entries) {
       if (!entry.isIntersecting) continue;

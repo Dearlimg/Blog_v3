@@ -18,8 +18,10 @@ if (target) {
       row.append(title, summary);
       target.append(row);
     }
-    if (!result.data.length) target.textContent = "暂无已发布文章";
+    if (!result.data.length) target.textContent = "No published articles yet.";
   } catch {
-    target.textContent = "文章暂时无法加载";
+    target.textContent = "Articles are temporarily unavailable.";
+  } finally {
+    target.setAttribute("aria-busy", "false");
   }
 }

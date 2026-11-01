@@ -9,7 +9,7 @@
   <link rel="canonical" href="{{.CanonicalURL}}">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Durlim">
-  <meta property="og:locale" content="zh_CN">
+  <meta property="og:locale" content="en_US">
   <meta property="og:title" content="Durlim | Developer &amp; Curious Mind">
   <meta property="og:description" content="Durlim's personal space. Backend development, distributed systems, AI, and the projects and experiences along the way.">
   <meta property="og:url" content="{{.CanonicalURL}}">
@@ -21,10 +21,11 @@
   <meta name="twitter:image" content="{{.ImageURL}}">
   <meta name="theme-color" content="#f8faf9">
   <link rel="icon" href="/static/Ava.jpg">
-  <link rel="stylesheet" href="/view/css/home.css?v=20261017">
+  <link rel="stylesheet" href="/view/css/home.css?v=20261101">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body class="home-page" id="top">
+<div class="scroll-progress" aria-hidden="true"></div>
 <a class="skip-link" href="#main-content">Skip to content</a>
 <header class="site-header">
   <div class="logo">
@@ -59,7 +60,7 @@
     </div>
       <aside class="intro-aside" aria-label="At a glance">
         <span class="eyebrow">AT A GLANCE</span>
-        <div class="now-entry"><span class="small-label">Currently</span><a href="#experience">Tencent <span class="team-label">/ TEG</span><i class="fas fa-arrow-up-right-from-square" aria-hidden="true"></i></a><p>Backend Development Engineer<br>Security Platform &amp; Agent Infrastructure</p><span class="current-note"><span></span>2026.05 &ndash; Present</span></div>
+        <div class="now-entry"><span class="small-label">Previously</span><a href="#experience">Tencent <span class="team-label">/ TEG</span><i class="fas fa-arrow-up-right-from-square" aria-hidden="true"></i></a><p>Backend Development Engineer<br>Security Platform &amp; Agent Infrastructure</p><span class="past-note">Former backend engineer</span></div>
         <div class="now-entry"><span class="small-label">Previously</span><a href="#experience">Ant Group <i class="fas fa-arrow-up-right-from-square" aria-hidden="true"></i></a><p>Platform Engineering</p></div>
         <div class="education-note"><i class="fas fa-graduation-cap" aria-hidden="true"></i><p>XUPT Student<span>Intelligent Science &amp; Technology</span></p></div>
       </aside>
@@ -129,8 +130,8 @@
   </section>
 
   <section class="recent-articles section-shell" id="articles">
-    <div class="section-heading"><h2>文章与记录</h2><a class="text-link" href="/articles">所有文章 <i class="fas fa-arrow-right" aria-hidden="true"></i></a></div>
-    <div id="recent-articles">正在加载…</div>
+    <div class="section-heading"><div><span class="eyebrow">FROM THE NOTEBOOK</span><h2>Articles &amp; notes<span>.</span></h2></div><a class="text-link" href="/articles">All articles <i class="fas fa-arrow-right" aria-hidden="true"></i></a></div>
+    <div id="recent-articles" aria-live="polite" aria-busy="true">Loading articles…</div>
   </section>
   <section class="tech-stack section-shell" id="toolkit">
     <div class="section-heading"><div><span class="eyebrow">02 / TOOLKIT</span><h2>Tools of the trade<span>.</span></h2></div><p>The building blocks behind the work.</p></div>
@@ -172,8 +173,8 @@
             <div class="exp-team">Security Platform — Agent Infrastructure</div>
           </div>
           <div class="exp-meta">
-            <span class="exp-period"><i class="far fa-calendar-alt"></i> 2026.05 - Present</span>
-            <span class="exp-badge current"><i class="fas fa-circle"></i> Current</span>
+            <span class="exp-period"><i class="far fa-calendar-alt"></i> Joined May 2026</span>
+            <span class="exp-badge past">Former role</span>
           </div>
           <div class="exp-toggle"><i class="fas fa-chevron-down"></i></div>
         </summary>
@@ -306,7 +307,7 @@
 </footer>
 
 <script src="/view/JS/api-config.js?v=20260823"></script>
-<script src="/view/JS/home.js?v=20260907"></script>
+<script src="/view/JS/home.js?v=20261101"></script>
 <script src="/view/JS/home-messages.js?v=20261017"></script>
 <script src="/view/JS/stat.js?v=20260823"></script>
 <script type="module" src="/static/article-build/home.js"></script>

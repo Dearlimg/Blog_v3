@@ -20,7 +20,7 @@ async function load(page = 1) {
     const result = await api(`/admin/articles?page=${page}&state=${state}`);
     $("#article-list").innerHTML =
       result.data.map((d) => card(d, true)).join("") ||
-      '<p class="empty">暂无文章</p>';
+      '<p class="empty">No articles found.</p>';
     pager(page, result.total, 12, load);
     icons();
   } catch (error) {
@@ -43,11 +43,11 @@ async function start() {
     for (const r of records) {
       const row = document.createElement("div");
       row.className = "local-row";
-      row.innerHTML = `<a href="/studio/articles/${r.id}/edit">${escape(r.content.title || "未命名草稿")}</a><span>${r.backup ? "冲突备份" : "本地未同步"} · ${escape(date(r.updatedAt))}</span>`;
+      row.innerHTML = `<a href="/studio/articles/${r.id}/edit">${escape(r.content.title || "Untitled draft")}</a><span>${r.backup ? "Conflict backup" : "Local changes pending"} · ${escape(date(r.updatedAt))}</span>`;
       const button = document.createElement("button");
       button.className = "icon-button";
-      button.title = "导出本地备份";
-      button.setAttribute("aria-label", "导出本地备份");
+      button.title = "Export local backup";
+      button.setAttribute("aria-label", "Export local backup");
       button.innerHTML = '<i data-lucide="download"></i>';
       button.onclick = () =>
         download(
@@ -60,7 +60,7 @@ async function start() {
     }
     icons();
   } catch {
-    notice("浏览器本地存储不可用，请检查浏览器设置。", true);
+    notice("Local storage is unavailable. Check your browser settings.", true);
   }
 }
 setupLogin(start);

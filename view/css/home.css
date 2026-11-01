@@ -251,3 +251,43 @@ main { display: flex; flex-direction: column; }
   html { scroll-behavior: auto; }
   *, *::before, *::after { transition: none !important; animation: none !important; }
 }
+/* Interactive surfaces and fluid layouts. */
+.scroll-progress { position: fixed; inset: 0 0 auto; height: 3px; z-index: 100; background: var(--accent); transform: scaleX(0); transform-origin: left; pointer-events: none; }
+.site-header { transition: box-shadow .2s; backdrop-filter: blur(14px); }
+.site-header.is-scrolled { box-shadow: 0 5px 24px #222b290b; }
+.past-note { display: block; color: var(--muted); margin-top: 10px; font: 10px/1.7 Consolas, monospace; }
+.exp-badge.past { color: var(--muted); }
+.intro h1 { font-size: clamp(70px, 8vw, 108px); }
+.primary-link i, .text-link i, .view-project i, .recent-article h3 { transition: transform .2s, color .2s; }
+.primary-link:hover i { transform: translateY(3px); }
+.text-link:hover i, .view-project:hover i { transform: translateX(4px); }
+.project-card, .recent-article { position: relative; isolation: isolate; border-radius: 4px; }
+.project-card::before, .recent-article::before { content: ""; position: absolute; inset: 0 -16px; background: var(--soft); border-radius: 6px; opacity: 0; z-index: -1; transition: opacity .2s; }
+.project-card:hover::before, .project-card:focus-within::before, .recent-article:hover::before, .recent-article:focus-within::before { opacity: 1; }
+.recent-article:hover h3 { color: var(--accent); transform: translateX(4px); }
+.tech-item { transition: background .2s, color .2s; }
+.tech-item:hover { color: var(--accent); background: var(--soft); }
+.exp-card-header { border-radius: 4px; transition: background .2s; }
+.exp-card-header:hover { background: var(--soft); }
+.form-group input, .form-group textarea { transition: border-color .2s, box-shadow .2s; }
+.form-group input:focus, .form-group textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px #24634f12; }
+@media (min-width: 761px) and (max-width: 960px) {
+  .nav-links { gap: 12px; }
+  .nav-item { font-size: 12px; }
+  .site-header { gap: 16px; padding-inline: 24px; }
+  .github-link span, .github-link .fa-arrow-up-right-from-square { display: none; }
+}
+@media (max-width: 760px) {
+  .intro-aside { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; border-left: 0; border-top: 1px solid var(--line); padding: 22px 0 0; }
+  .intro-aside > .eyebrow { grid-column: 1 / -1; }
+  .now-entry { margin-top: 0; min-width: 0; }
+  .now-entry > a { font-size: 16px; }
+  .education-note { grid-column: 1 / -1; margin: 0; padding-top: 15px; }
+  .intro-links { flex-wrap: wrap; }
+  .section-shell { width: calc(100% - clamp(32px, 5vw, 40px)); }
+  #main-nav { max-height: calc(100dvh - 70px); overflow-y: auto; }
+  .icon-button, .text-link, .view-project { min-height: 44px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .recent-article:hover h3, .primary-link:hover i, .text-link:hover i, .view-project:hover i { transform: none; }
+}

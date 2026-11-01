@@ -1,129 +1,129 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en-US">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <meta name="robots" content="noindex,nofollow" />
-    <title>编辑文章 | Durlim</title>
+    <title>Edit article | Durlim</title>
     <link rel="stylesheet" href="/view/css/articles.css" />
   </head>
   <body>
     <header class="site-header">
       <a class="brand" href="/">Durlim<span>.</span></a>
       <nav>
-        <a href="/studio/articles"><i data-lucide="arrow-left"></i>写作台</a
+        <a href="/studio/articles"><i data-lucide="arrow-left"></i>Studio</a
         ><a
           id="published-link"
           href="/articles"
           target="_blank"
           rel="noopener"
           hidden
-          >公开版本<i data-lucide="external-link"></i
+          >Published version<i data-lucide="external-link"></i
         ></a>
       </nav>
     </header>
     <main class="editor-page">
       <p id="notice" role="status" hidden></p>
       <section id="login-panel" class="login-panel" hidden>
-        <h2>博主登录</h2>
+        <h2>Owner sign in</h2>
         <form id="login-form">
           <label
-            >邮箱<input
+            >Email<input
               name="email"
               type="email"
               autocomplete="username"
               required /></label
           ><label
-            >密码<input
+            >Password<input
               name="password"
               type="password"
               autocomplete="current-password"
               required /></label
-          ><button class="primary">登录并继续</button>
+          ><button class="primary">Sign in & continue</button>
         </form>
       </section>
       <div id="editor-content" hidden>
         <div class="editor-toolbar">
           <div class="save-info">
-            <span id="publish-state">草稿</span
-            ><span id="save-status" role="status">正在加载…</span>
+            <span id="publish-state">Draft</span
+            ><span id="save-status" role="status">Loading…</span>
           </div>
           <div class="actions">
             <button
               id="retry"
               class="icon-button"
-              title="重试同步"
-              aria-label="重试同步"
+              title="Retry sync"
+              aria-label="Retry sync"
             >
               <i data-lucide="rotate-ccw"></i></button
             ><button
               id="snapshot"
               class="icon-button"
-              title="保存快照"
-              aria-label="保存快照"
+              title="Save snapshot"
+              aria-label="Save snapshot"
             >
               <i data-lucide="save"></i></button
             ><button
               id="history"
               class="icon-button"
-              title="历史快照"
-              aria-label="历史快照"
+              title="Revision history"
+              aria-label="Revision history"
             >
               <i data-lucide="history"></i></button
             ><button
               id="preview-button"
               class="icon-button"
-              title="预览"
-              aria-label="预览"
+              title="Preview"
+              aria-label="Preview"
             >
               <i data-lucide="eye"></i></button
             ><button id="publish" class="primary">
-              <i data-lucide="upload"></i>发布
+              <i data-lucide="upload"></i>Publish
             </button>
           </div>
         </div>
         <div id="editing-fields">
           <label class="title-field"
-            ><span class="sr-only">文章标题</span
-            ><input id="title" placeholder="文章标题" maxlength="200"
+            ><span class="sr-only">Article title</span
+            ><input id="title" placeholder="Article title" maxlength="200"
           /></label>
           <div class="editor-layout">
-            <section class="writing-surface" aria-label="正文编辑">
+            <section class="writing-surface" aria-label="Article body">
               <div class="format-toolbar">
                 <div id="format-tools" class="actions">
                   <button
                     data-format="heading"
                     class="icon-button"
-                    title="标题"
-                    aria-label="标题"
+                    title="Heading"
+                    aria-label="Heading"
                   >
                     <i data-lucide="heading"></i></button
                   ><button
                     data-format="bold"
                     class="icon-button"
-                    title="加粗"
-                    aria-label="加粗"
+                    title="Bold"
+                    aria-label="Bold"
                   >
                     <i data-lucide="bold"></i></button
                   ><button
                     data-format="italic"
                     class="icon-button"
-                    title="斜体"
-                    aria-label="斜体"
+                    title="Italic"
+                    aria-label="Italic"
                   >
                     <i data-lucide="italic"></i></button
                   ><button
                     data-format="list"
                     class="icon-button"
-                    title="列表"
-                    aria-label="列表"
+                    title="List"
+                    aria-label="List"
                   >
                     <i data-lucide="list"></i></button
                   ><button
                     data-format="code"
                     class="icon-button"
-                    title="代码块"
-                    aria-label="代码块"
+                    title="Code block"
+                    aria-label="Code block"
                   >
                     <i data-lucide="code"></i>
                   </button>
@@ -131,8 +131,8 @@
                 <button
                   id="upload-image"
                   class="icon-button"
-                  title="上传图片"
-                  aria-label="上传图片"
+                  title="Upload image"
+                  aria-label="Upload image"
                 >
                   <i data-lucide="image"></i></button
                 ><input
@@ -144,35 +144,35 @@
               </div>
               <div id="code-editor"></div>
               <div class="editor-bottom">
-                <span id="word-count">0 字符</span
-                ><button id="template" class="text-button">插入面试模板</button>
+                <span id="word-count">0 characters</span
+                ><button id="template" class="text-button">Insert interview template</button>
               </div>
             </section>
             <aside class="metadata">
               <label
-                >分类<select id="category">
-                  <option value="fundamentals">面试八股</option>
-                  <option value="project">项目复盘</option>
-                  <option value="notes">学习记录</option>
-                  <option value="interview">面试记录</option>
+                >Category<select id="category">
+                  <option value="fundamentals">Fundamentals</option>
+                  <option value="project">Project retrospectives</option>
+                  <option value="notes">Learning notes</option>
+                  <option value="interview">Interview notes</option>
                 </select></label
               ><label
-                >标签<input
+                >Tags<input
                   id="tags"
                   placeholder="Go, MySQL, Redis"
                   maxlength="500" /></label
               ><label
-                >摘要<textarea
+                >Summary<textarea
                   id="summary"
                   rows="4"
                   maxlength="1000"
                 ></textarea></label
               ><label
-                >私人面试信息 · 不公开<textarea
+                >Private interview notes · never published<textarea
                   id="private-notes"
                   rows="8"
                   maxlength="131072"
-                  placeholder="公司、日期、岗位、轮次、结果…"
+                  placeholder="Company, date, role, round, result…"
                 ></textarea>
               </label>
             </aside>
@@ -181,10 +181,10 @@
         <div class="editor-footer">
           <div class="actions">
             <button id="export" class="text-button">
-              <i data-lucide="download"></i>导出完整备份</button
+              <i data-lucide="download"></i>Export full backup</button
             ><button id="export-markdown" class="text-button">
-              导出 Markdown</button
-            ><button id="import-backup" class="text-button">导入备份</button
+              Export Markdown</button
+            ><button id="import-backup" class="text-button">Import backup</button
             ><input
               id="backup-file"
               type="file"
@@ -193,23 +193,23 @@
             />
           </div>
           <div class="actions">
-            <button id="unpublish" class="text-button" hidden>下架</button
+            <button id="unpublish" class="text-button" hidden>Unpublish</button
             ><button
               id="trash"
               class="icon-button danger"
-              title="移入回收站"
-              aria-label="移入回收站"
+              title="Move to trash"
+              aria-label="Move to trash"
             >
               <i data-lucide="trash-2"></i></button
-            ><button id="untrash" class="text-button" hidden>恢复为草稿</button>
+            ><button id="untrash" class="text-button" hidden>Restore as draft</button>
           </div>
         </div>
       </div>
     </main>
     <dialog id="preview-dialog">
       <div class="dialog-header">
-        <h2 id="preview-title">预览</h2>
-        <button data-close class="icon-button" title="关闭" aria-label="关闭">
+        <h2 id="preview-title">Preview</h2>
+        <button data-close class="icon-button" title="Close" aria-label="Close">
           <i data-lucide="x"></i>
         </button>
       </div>
@@ -217,8 +217,8 @@
     </dialog>
     <dialog id="publish-dialog">
       <div class="dialog-header">
-        <h2>发布预览</h2>
-        <button data-close class="icon-button" title="关闭" aria-label="关闭">
+        <h2>Publication preview</h2>
+        <button data-close class="icon-button" title="Close" aria-label="Close">
           <i data-lucide="x"></i>
         </button>
       </div>
@@ -226,31 +226,31 @@
       <p id="publish-summary" class="summary"></p>
       <div id="publish-body" class="prose"></div>
       <div class="dialog-footer">
-        <button id="confirm-publish" class="primary">确认发布</button>
+        <button id="confirm-publish" class="primary">Confirm publication</button>
       </div>
     </dialog>
     <dialog id="conflict-dialog">
-      <div class="dialog-header"><h2>草稿版本冲突</h2></div>
+      <div class="dialog-header"><h2>Draft version conflict</h2></div>
       <div class="conflict-columns">
         <section>
-          <h3>本地内容</h3>
+          <h3>Local content</h3>
           <pre id="local-conflict"></pre>
         </section>
         <section>
-          <h3>服务器内容</h3>
+          <h3>Server content</h3>
           <pre id="remote-conflict"></pre>
         </section>
       </div>
       <div class="dialog-footer">
-        <button id="export-conflict" class="text-button">导出本地备份</button
-        ><button id="keep-remote">采用服务器版本</button
-        ><button id="keep-local" class="primary">保留本地版本</button>
+        <button id="export-conflict" class="text-button">Export local backup</button
+        ><button id="keep-remote">Use server version</button
+        ><button id="keep-local" class="primary">Keep local version</button>
       </div>
     </dialog>
     <dialog id="history-dialog" class="history-dialog">
       <div class="dialog-header">
-        <h2>历史快照</h2>
-        <button data-close class="icon-button" title="关闭" aria-label="关闭">
+        <h2>Revision history</h2>
+        <button data-close class="icon-button" title="Close" aria-label="Close">
           <i data-lucide="x"></i>
         </button>
       </div>
@@ -259,16 +259,16 @@
         <button
           id="history-previous"
           class="icon-button"
-          title="上一页"
-          aria-label="上一页"
+          title="Previous page"
+          aria-label="Previous page"
         >
           <i data-lucide="arrow-left"></i></button
         ><span id="history-page"></span
         ><button
           id="history-next"
           class="icon-button"
-          title="下一页"
-          aria-label="下一页"
+          title="Next page"
+          aria-label="Next page"
         >
           <i data-lucide="arrow-right"></i>
         </button>
@@ -277,7 +277,7 @@
       <div id="revision-body" class="prose"></div>
       <pre id="revision-private" class="private-preview"></pre>
       <div class="dialog-footer">
-        <button id="restore-revision" class="primary" hidden>恢复为草稿</button>
+        <button id="restore-revision" class="primary" hidden>Restore as draft</button>
       </div>
     </dialog>
     <script type="module" src="/static/article-build/editor.js"></script>

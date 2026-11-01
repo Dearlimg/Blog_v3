@@ -90,7 +90,7 @@ async function synced(page) {
   await page.waitForFunction(() =>
     document
       .querySelector("#save-status")
-      ?.textContent.startsWith("已同步服务器"),
+      ?.textContent.startsWith("Synced with server"),
   );
 }
 
@@ -106,7 +106,7 @@ test("editor: publish isolation, upload, snapshot restore, local recovery, confl
   await synced(page);
   await page.locator("#template").click();
   assert.equal(await page.locator("#category").inputValue(), "interview");
-  assert.ok((await page.locator(".cm-content").innerText()).includes("待补知识"));
+  assert.ok((await page.locator(".cm-content").innerText()).includes("Knowledge gaps"));
   await page.locator("#title").fill("Go 并发面试复盘");
   await page.locator("#summary").fill("记录并发、锁与项目实践中的关键问题。");
   await page.locator("#tags").fill("Go, 并发");
@@ -164,7 +164,7 @@ test("editor: publish isolation, upload, snapshot restore, local recovery, confl
   await page.waitForFunction(() =>
     document
       .querySelector("#save-status")
-      ?.textContent.includes("已保存到本机"),
+      ?.textContent.includes("Saved locally"),
   );
   page.on("dialog", (dialog) => dialog.accept());
   await page.close();
@@ -183,7 +183,7 @@ test("editor: publish isolation, upload, snapshot restore, local recovery, confl
   const second = await context.newPage();
   await second.goto(base + `/studio/articles/${id}/edit`);
   await second.waitForFunction(() =>
-    document.querySelector("#notice")?.textContent.includes("另一个标签页"),
+    document.querySelector("#notice")?.textContent.includes("another tab"),
   );
   await second.close();
   const remote = {
@@ -216,7 +216,7 @@ test("editor: publish isolation, upload, snapshot restore, local recovery, confl
   await recovered.locator("#history-dialog").waitFor({ state: "visible" });
   const publishedButton = recovered
     .locator(".revision-item")
-    .filter({ hasText: "发布" })
+    .filter({ hasText: "Publish" })
     .first();
   await publishedButton.click();
   await recovered.locator("#restore-revision").click();
@@ -291,7 +291,7 @@ test("lost save response retries once; expired login preserves draft; public Mar
   await page.locator("#title").fill("幂等保存测试");
   await page.locator("#snapshot").click();
   await page.waitForFunction(() =>
-    document.querySelector("#save-status").textContent.includes("同步失败"),
+    document.querySelector("#save-status").textContent.includes("Sync failed"),
   );
   const version = (await request(`/admin/articles/${id}`)).data.draft.version;
   await page.locator("#retry").click();
@@ -305,7 +305,7 @@ test("lost save response retries once; expired login preserves draft; public Mar
     .fill(Array.from({ length: 13 }, (_, i) => `tag${i}`).join(","));
   await page.locator("#snapshot").click();
   await page.waitForFunction(() =>
-    document.querySelector("#save-status").textContent.includes("保存被拒绝"),
+    document.querySelector("#save-status").textContent.includes("Save rejected"),
   );
   await page.locator("#tags").fill("valid-tag");
   await page.locator("#snapshot").click();
@@ -377,9 +377,12 @@ test("reader cannot enter studio; public list supports search and mobile layout"
   await page.locator("#keyword").fill("不存在的关键词xyz");
   await page.locator("#filters button").click();
   await page.locator(".empty").waitFor();
-  await page.locator("#keyword").fill("");
-  await page.locator("#filters button").click();
+  await page.locator("#reset-filters").click();
   await page.locator(".article-row").first().waitFor();
+  assert.equal(await page.locator("#keyword").inputValue(), "");
+  assert.equal(await page.locator("#category").inputValue(), "");
+  assert.equal(await page.locator("#tag").inputValue(), "");
+  assert.equal(await page.locator("#article-list").getAttribute("aria-busy"), "false");
   assert.ok(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,
@@ -389,6 +392,46 @@ test("reader cannot enter studio; public list supports search and mobile layout"
     path: "work/screenshots/list-mobile.png",
     fullPage: true,
   });
+  await context.close();
+});
+
+test("homepage: responsive navigation, former role and scroll feedback", async () => {
+  const context = await browser.newContext({ reducedMotion: "reduce" });
+  const page = await context.newPage();
+  const errors = [];
+  page.on("pageerror", error => errors.push(error.message));
+  for (const width of [320, 390, 768, 1024, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto(base + "/");
+    await page.locator(".past-note").waitFor();
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `overflow at ${width}px`);
+    assert.equal(await page.locator(".exp-badge.past").innerText(), "Former role");
+    assert.equal(await page.locator("#articles h2").innerText(), "Articles & notes.");
+    if (width <= 760) {
+      await page.locator(".menu-toggle").click();
+      assert.equal(await page.locator(".menu-toggle").getAttribute("aria-expanded"), "true");
+      await page.keyboard.press("Escape");
+      assert.equal(await page.locator(".menu-toggle").getAttribute("aria-expanded"), "false");
+      await page.locator(".menu-toggle").click();
+      await page.locator('#main-nav a[href="#experience"]').click();
+      assert.equal(await page.locator(".menu-toggle").getAttribute("aria-expanded"), "false");
+    }
+    await page.locator(".exp-card-header").first().click();
+    assert.equal(await page.locator(".exp-card").first().getAttribute("open"), "");
+    await page.evaluate(() => scrollTo(0, document.body.scrollHeight));
+    await page.waitForFunction(() => document.querySelector(".site-header").classList.contains("is-scrolled"));
+    assert.notEqual(await page.locator(".scroll-progress").evaluate(el => getComputedStyle(el).transform), "matrix(0, 0, 0, 1, 0, 0)");
+    if ([390, 1440].includes(width)) {
+      await page.evaluate(() => {
+        document.activeElement?.blur();
+        document.querySelectorAll('.exp-card').forEach(card => card.open = false);
+        scrollTo(0, 0);
+      });
+      await page.waitForFunction(() => scrollY === 0);
+      await page.screenshot({ path: `work/screenshots/home-${width}.png`, fullPage: true });
+    }
+  }
+  assert.deepEqual(errors, []);
   await context.close();
 });
 

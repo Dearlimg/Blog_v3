@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en-US">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -8,12 +8,12 @@
     <title>{{.Title}}</title>
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Durlim" />
-    <meta property="og:locale" content="zh_CN" />
+    <meta property="og:locale" content="en_US" />
     <meta property="og:url" content="{{.CanonicalURL}}" />
     <meta property="og:title" content="{{.Title}}" />
     <meta property="og:description" content="{{.Description}}" />
     <meta property="og:image" content="{{.ImageURL}}" />
-    <meta property="og:image:alt" content="Durlim 个人博客头像" />
+    <meta property="og:image:alt" content="Durlim personal blog avatar" />
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content="{{.Title}}" />
     <meta name="twitter:description" content="{{.Description}}" />
@@ -24,15 +24,15 @@
     <header class="site-header">
       <a class="brand" href="/">Durlim<span>.</span></a>
       <nav>
-        <a href="/">首页</a><a href="/articles" aria-current="page">文章</a
-        ><a href="/studio/articles">写作台</a>
+        <a href="/">Home</a><a href="/articles" aria-current="page">Articles</a
+        ><a href="/studio/articles">Studio</a>
       </nav>
     </header>
     <main class="page">
       <div class="page-heading">
         <div>
           <p class="eyebrow">DURLIM / ARTICLES</p>
-          <h1>文章与记录</h1>
+          <h1>Articles & notes</h1>
         </div>
         <img
           class="author-avatar"
@@ -44,49 +44,50 @@
       </div>
       <form id="filters" class="filters">
         <label class="search-field"
-          ><span class="sr-only">搜索文章</span
+          ><span class="sr-only">Search articles</span
           ><input
             id="keyword"
             type="search"
-            placeholder="搜索文章"
+            placeholder="Search articles"
             maxlength="100" /><button
             class="icon-button"
-            title="搜索"
-            aria-label="搜索"
+            title="Search"
+            aria-label="Search"
           >
             <i data-lucide="search"></i></button></label
         ><label
-          ><span class="sr-only">分类</span
+          ><span class="sr-only">Category</span
           ><select id="category">
-            <option value="">全部分类</option>
-            <option value="fundamentals">面试八股</option>
-            <option value="project">项目复盘</option>
-            <option value="notes">学习记录</option>
-            <option value="interview">面试记录</option>
+            <option value="">All categories</option>
+            <option value="fundamentals">Fundamentals</option>
+            <option value="project">Project retrospectives</option>
+            <option value="notes">Learning notes</option>
+            <option value="interview">Interview notes</option>
           </select></label
         ><label
-          ><span class="sr-only">标签</span
-          ><input id="tag" placeholder="标签" maxlength="40"
+          ><span class="sr-only">Tags</span
+          ><input id="tag" placeholder="Tags" maxlength="40"
         /></label>
       </form>
       <p id="notice" role="status" hidden></p>
-      <section id="article-list" aria-label="文章列表">
-        <p class="empty">正在加载…</p>
+      <button id="reset-filters" class="text-button" type="button">Clear filters</button>
+      <section id="article-list" aria-label="Article list" aria-live="polite" aria-busy="true">
+        <p class="empty">Loading…</p>
       </section>
       <div class="pagination">
         <button
           id="previous"
           class="icon-button"
-          title="上一页"
-          aria-label="上一页"
+          title="Previous page"
+          aria-label="Previous page"
         >
           <i data-lucide="arrow-left"></i></button
         ><span id="page-label"></span
         ><button
           id="next"
           class="icon-button"
-          title="下一页"
-          aria-label="下一页"
+          title="Next page"
+          aria-label="Next page"
         >
           <i data-lucide="arrow-right"></i>
         </button>

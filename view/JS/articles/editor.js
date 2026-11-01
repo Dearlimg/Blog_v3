@@ -49,7 +49,7 @@ function persist() {
   persistence = persistence.catch(() => {}).then(() => writeLocal(copy));
   return persistence.catch((error) => {
     error.localSave = true;
-    status("本地保存失败，请立即导出备份", true);
+    status("Local save failed. Export a backup now.", true);
     throw error;
   });
 }
@@ -77,14 +77,14 @@ function fill(content) {
     changes: { from: 0, to: view.state.doc.length, insert: content.body },
   });
   muted = false;
-  $("#word-count").textContent = `${content.body.length} 字符`;
+  $("#word-count").textContent = `${content.body.length} characters`;
 }
 function changed() {
   if (muted || !writable || !record) return;
   record.content = capture();
   record.dirty = true;
-  status("正在保存到本机…");
-  $("#word-count").textContent = `${record.content.body.length} 字符`;
+  status("Saving locally…");
+  $("#word-count").textContent = `${record.content.body.length} characters`;
   clearTimeout(localTimer);
   localTimer = setTimeout(saveLocal, 300);
   if (!localMaxTimer) localMaxTimer = setTimeout(saveLocal, 1000);
@@ -98,7 +98,7 @@ async function saveLocal() {
   localMaxTimer = null;
   try {
     await persist();
-    if (record.dirty) status("已保存到本机，等待同步");
+    if (record.dirty) status("Saved locally, waiting to sync");
   } catch {
     /* Status already reports the failed local write. */
   }
@@ -106,10 +106,10 @@ async function saveLocal() {
 function flags(d) {
   remoteDocument = d;
   $("#publish-state").textContent = d.trashed
-    ? "回收站"
+    ? "Trash"
     : d.published_revision_id
-      ? "已发布"
-      : "草稿";
+      ? "Published"
+      : "Draft";
   $("#unpublish").hidden = !d.published_revision_id || d.trashed;
   $("#untrash").hidden = !d.trashed;
   $("#trash").hidden = d.trashed;
@@ -155,7 +155,7 @@ async function sync(action = "save", revisionID = 0) {
   if (!writable || syncing || conflicted) return false;
   if (action === "save" && !record.dirty && !record.pending) return true;
   syncing = true;
-  status("正在同步…");
+  status("Syncing…");
   try {
     await persist();
     await sendPending();
@@ -183,28 +183,28 @@ async function sync(action = "save", revisionID = 0) {
     }
     status(
       record.dirty
-        ? "已保存到本机，等待同步"
-        : `已同步服务器 · ${new Date().toLocaleTimeString("zh-CN")}`,
+        ? "Saved locally, waiting to sync"
+        : `Synced with server · ${new Date().toLocaleTimeString("en-US")}`,
     );
     notice("");
     return true;
   } catch (error) {
     if (error.localSave) {
-      status("本地保存失败，请立即导出完整备份", true);
+      status("Local save failed. Export a full backup now.", true);
     } else if (error.status === 400 || error.status === 413) {
       record.pending = null;
       record.dirty = true;
       await saveLocal();
-      status("保存被拒绝，请检查标题、标签和内容长度", true);
+      status("Save rejected. Check the title, tags and content length.", true);
     } else if (error.status === 409) {
       conflicted = true;
       await showConflict();
     } else if (error.status === 401 || error.status === 403) {
       authError(error);
-      status("已保留本地草稿，请重新登录", true);
+      status("Local draft preserved. Please sign in again.", true);
     } else {
       status(
-        navigator.onLine ? "同步失败，本地草稿已保留" : "离线，本地草稿已保留",
+        navigator.onLine ? "Sync failed. Local draft preserved." : "Offline. Local draft preserved.",
         true,
       );
       notice(error.message, true);
@@ -227,9 +227,9 @@ async function showConflict() {
     );
     $("#keep-local").disabled = d.trashed;
     $("#conflict-dialog").showModal();
-    status("版本冲突，两份内容均已保留", true);
+    status("Version conflict. Both drafts have been preserved.", true);
   } catch (error) {
-    notice("无法读取服务器版本，请联网后点击重试。", true);
+    notice("Cannot load the server version. Reconnect and retry.", true);
   }
 }
 async function resolveConflict(keepLocal) {
@@ -258,7 +258,7 @@ async function resolveConflict(keepLocal) {
   await persist();
   $("#conflict-dialog").close();
   if (keepLocal) await sync();
-  else status("已采用服务器版本，本地旧稿已备份");
+  else status("Server version loaded. Previous local draft backed up.");
 }
 function contentOf(draft) {
   return {
@@ -280,7 +280,7 @@ async function initialize(ownerID) {
   } catch (error) {
     if (error.status !== 404) {
       if (!record || error.status === 401 || error.status === 403) throw error;
-      notice("暂时无法连接服务器，已恢复本地草稿。", true);
+      notice("Server unavailable. Local draft restored.", true);
     }
   }
   if (!record)
@@ -323,9 +323,9 @@ async function initialize(ownerID) {
     }
   }
   if (record.dirty || record.pending) {
-    status("已恢复本地草稿");
+    status("Local draft restored");
     if (!conflicted) await sync();
-  } else status("已同步服务器");
+  } else status("Synced with server");
 }
 async function start() {
   let ownerID;
@@ -339,21 +339,21 @@ async function start() {
     ownerID = cached;
   }
   if (record) {
-    if (ownerID !== owner) throw new Error("请登录原草稿所属的博主账号。");
+    if (ownerID !== owner) throw new Error("Sign in with the original draft owner account.");
     $("#login-panel").hidden = true;
     await sync();
     return;
   }
   if (!navigator.locks)
     throw new Error(
-      "当前浏览器不支持安全的多标签页编辑，请使用新版 Chrome、Edge 或 Firefox。",
+      "Safe multi-tab editing is unavailable. Use a recent Chrome, Edge or Firefox browser.",
     );
   navigator.locks.request(
     `article:${ownerID}:${id}`,
     { ifAvailable: true },
     async (lock) => {
       if (!lock) {
-        notice("此文章已在另一个标签页编辑，请关闭那个页面后刷新。", true);
+        notice("This article is open in another tab. Close that tab and refresh.", true);
         return;
       }
       try {
@@ -407,9 +407,9 @@ $("#confirm-publish").onclick = async () => {
   if (await sync("publish")) $("#publish-dialog").close();
 };
 $("#unpublish").onclick = () =>
-  confirm("下架后访客将无法阅读，草稿和历史版本保留。") && sync("unpublish");
+  confirm("Unpublish this article? Drafts and revision history will be preserved.") && sync("unpublish");
 $("#trash").onclick = () =>
-  confirm("将文章移入回收站并停止公开展示？") && sync("trash");
+  confirm("Move this article to trash and remove public access?") && sync("trash");
 $("#untrash").onclick = () => sync("untrash");
 async function revisions(page = 1) {
   revisionPage = page;
@@ -418,7 +418,7 @@ async function revisions(page = 1) {
   for (const r of result.data) {
     const button = document.createElement("button");
     button.className = "revision-item";
-    button.textContent = `v${r.version} · ${{ auto: "自动快照", snapshot: "手动保存", publish: "发布", restore: "恢复", before_restore: "恢复前备份", unpublish: "下架", trash: "移入回收站", untrash: "恢复草稿" }[r.reason] || r.reason} · ${date(r.created_at)}`;
+    button.textContent = `v${r.version} · ${{ auto: "Auto snapshot", snapshot: "Manual save", publish: "Publish", restore: "Restore", before_restore: "Backup before restore", unpublish: "Unpublish", trash: "Move to trash", untrash: "Restore draft" }[r.reason] || r.reason} · ${date(r.created_at)}`;
     button.onclick = async () => {
       try {
         const { data: full } = await api(
@@ -487,13 +487,13 @@ $("#format-tools").onclick = (e) => {
   insert(...formats[button.dataset.format]);
 };
 $("#template").onclick = () => {
-  if (record.content.body && !confirm("在当前正文末尾追加面试模板？")) return;
+  if (record.content.body && !confirm("Append an interview template to this draft?")) return;
   $("#category").value = "interview";
   view.dispatch({
     changes: {
       from: view.state.doc.length,
       insert:
-        "\n## 面试概况\n\n日期：\n岗位：\n轮次：\n\n## 问题与回答\n\n### 问题一\n\n我的回答：\n\n追问：\n\n## 项目讨论\n\n## 面试复盘\n\n## 待补知识\n\n- [ ] \n",
+        "\n## Interview overview\n\nDate:\nRole:\nRound:\n\n## Questions & answers\n\n### Question one\n\nMy answer:\n\nFollow-up:\n\n## Project discussion\n\n## Interview retrospective\n\n## Knowledge gaps\n\n- [ ] \n",
     },
   });
   changed();
@@ -503,7 +503,7 @@ $("#image-file").onchange = async (e) => {
   const file = e.target.files[0];
   if (!file) return;
   try {
-    if (file.size > 5 * 1024 * 1024) throw new Error("图片不能超过 5 MB");
+    if (file.size > 5 * 1024 * 1024) throw new Error("Images must be 5 MB or smaller");
     if (!(await sync())) return;
     const form = new FormData();
     form.append("file", file);
@@ -511,7 +511,7 @@ $("#image-file").onchange = async (e) => {
       method: "POST",
       body: form,
     });
-    insert(`\n![图片](${data.url})\n`);
+    insert(`\n![Image](${data.url})\n`);
   } catch (error) {
     notice(error.message, true);
   } finally {
@@ -523,7 +523,7 @@ $("#backup-file").onchange = async (e) => {
   const file = e.target.files[0];
   if (!file) return;
   try {
-    if (file.size > 4 * 1024 * 1024) throw new Error("备份文件过大");
+    if (file.size > 4 * 1024 * 1024) throw new Error("Backup file is too large");
     const data = JSON.parse(await file.text());
     const c = data.content;
     const valid =
@@ -533,8 +533,8 @@ $("#backup-file").onchange = async (e) => {
       ) &&
       Array.isArray(c.tags) &&
       c.tags.every((t) => typeof t === "string");
-    if (!valid) throw new Error("无效的文章备份");
-    if (!confirm("用备份内容替换当前草稿？当前内容会保留一份本地备份。"))
+    if (!valid) throw new Error("Invalid article backup");
+    if (!confirm("Replace this draft with the backup? A local copy of the current draft will be preserved."))
       return;
     await writeLocal({
       ...structuredClone(record),
