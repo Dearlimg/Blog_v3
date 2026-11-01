@@ -86,7 +86,7 @@ func Setup(cfg *config.Config, db *gorm.DB, rdb *redis.Client) *gin.Engine {
 	article.Register(r, db, cfg.JWT.SecretKey, cfg.BlogOwnerUserID, cfg.SiteURL)
 
 	if err := agent.RegisterFromEnv(r); err != nil {
-		slog.Error("agent initialization failed; agent endpoints disabled")
+		slog.Error("agent initialization failed; agent endpoints disabled", "error", err)
 	}
 
 	userSvc := user.NewService(db, cfg.JWT.SecretKey, cfg.JWT.Expire)
